@@ -1,0 +1,9 @@
+[submodule "lib/imgui"]
+	path = lib/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "lib/ImGuiFileDialog"]
+	path = lib/ImGuiFileDialog
+	url = https://github.com/aiekick/ImGuiFileDialog.git
+[submodule "lib/libremidi"]
+	path = lib/libremidi
+	url = https://github.com/jcelerier/libremidi.git
