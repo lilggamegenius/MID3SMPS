@@ -5,25 +5,29 @@
 #include "../Windows/window.hpp"
 
 class WindowHandler {
-	std::list<std::unique_ptr<Window>> windowList;
+	std::list<std::shared_ptr<Window>> windowList;
+	std::weak_ptr<Window> mainWindow;
 
 public:
 	template<typename Window>
-	void addWindow(Window&& window) {
-		windowList.push_back(std::make_unique<Window>(window));
+	void addWindow(Window&& window, bool isMainWindow = false) {
+		windowList.push_back(std::make_shared<Window>(window));
+		if(isMainWindow){
+			mainWindow = windowList.back();
+		}
 	}
 
 	template<typename Window>
 	void removeWindow(const Window& window) {
-		std::unique_ptr<::Window>* winPtr;
+		std::shared_ptr<::Window> winPtr;
 		for (auto &win: windowList) {
 			if(win.get() != std::addressof(window)) continue;
-			winPtr = &win;
+			winPtr = win;
 			break;
 		}
 
 		if(winPtr){
-			windowList.remove(*winPtr);
+			windowList.remove(winPtr);
 		}
 	}
 

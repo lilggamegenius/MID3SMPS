@@ -80,6 +80,8 @@ namespace MID3SMPS {
 				break;
 			case libremidi::reader::validated:
 				break;
+			default:
+				std::unreachable();
 		}
 
 		currentMidiPath = midi;
@@ -123,7 +125,7 @@ namespace MID3SMPS {
 
 	}
 
-	MainWindow::MainWindow(WindowHandler &windowHandler) : windowHandler(windowHandler){
+	MainWindow::MainWindow(WindowHandler &handler) : windowHandler(handler){
 
 	}
 

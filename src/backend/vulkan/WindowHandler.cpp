@@ -8,14 +8,14 @@
 // - Helper ImGui_ImplVulkanH_XXX functions and structures are only used by this example (main.cpp) and by
 //   the backend itself (imgui_impl_vulkan.cpp), but should PROBABLY NOT be used by your own engine/app code.
 // Read comments in imgui_impl_vulkan.h.
+#include <fmt/core.h>
 
 #include "../WindowHandler.hpp"
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_vulkan.h"
 #include "../../windows/MainWindow.hpp"
-//#include <cstdio>          // printf, fprintf
-//#include <cstdlib>         // abort
+
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
 
 #define GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_VULKAN
@@ -45,7 +45,7 @@ static VkAllocationCallbacks *g_Allocator = nullptr;
 static VkInstance g_Instance = VK_NULL_HANDLE;
 static VkPhysicalDevice g_PhysicalDevice = VK_NULL_HANDLE;
 static VkDevice g_Device = VK_NULL_HANDLE;
-static uint32_t g_QueueFamily = (uint32_t) -1;
+static uint32_t g_QueueFamily = static_cast<uint32_t>(-1);
 static VkQueue g_Queue = VK_NULL_HANDLE;
 static VkDebugReportCallbackEXT g_DebugReport = VK_NULL_HANDLE;
 static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
@@ -53,20 +53,20 @@ static VkDescriptorPool g_DescriptorPool = VK_NULL_HANDLE;
 
 static std::weak_ptr<GLFWwindow> g_AppWindow;
 static ImGui_ImplVulkanH_Window g_MainWindowData;
-static int g_MinImageCount = 2;
+static uint32_t g_MinImageCount = 2;
 static bool g_SwapChainRebuild = false;
 
 static void glfw_error_callback(int error, const char *description){
-	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+	fmt::print(stderr, "GLFW Error {}: {}\n", error, description);
 }
 
 static void check_vk_result(VkResult err){
 	if(err == 0){
 		return;
 	}
-	fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
+	fmt::print(stderr, "[vulkan] Error: VkResult = {}\n", static_cast<int>(err));
 	if(err < 0){
-		abort();
+		std::abort();
 	}
 }
 
@@ -140,8 +140,8 @@ static void SetupVulkan(const char **extensions, uint32_t extensions_count){
 		// If a number >1 of GPUs got reported, find discrete GPU if present, or use first one available. This covers
 		// most common cases (multi-gpu/integrated+dedicated graphics). Handling more complicated setups (multiple
 		// dedicated GPUs) is out of scope of this sample.
-		int use_gpu = 0;
-		for(int i = 0; i < (int) gpu_count; i++){
+		uint32_t use_gpu = 0;
+		for(uint32_t i = 0; i < gpu_count; i++){
 			VkPhysicalDeviceProperties properties;
 			vkGetPhysicalDeviceProperties(gpus[i], &properties);
 			if(properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU){
@@ -165,12 +165,12 @@ static void SetupVulkan(const char **extensions, uint32_t extensions_count){
 				break;
 			}
 		}
-		IM_ASSERT(g_QueueFamily != (uint32_t) -1);
+		IM_ASSERT(g_QueueFamily != static_cast<uint32_t>(-1));
 	}
 
 	// Create Logical Device (with 1 queue)
 	{
-		int device_extension_count = 1;
+		uint32_t device_extension_count = 1;
 		const char *device_extensions[] = {"VK_KHR_swapchain"};
 		const float queue_priority[] = {1.0f};
 		VkDeviceQueueCreateInfo queue_info[1] = {};
@@ -209,7 +209,7 @@ static void SetupVulkan(const char **extensions, uint32_t extensions_count){
 		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 		pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
-		pool_info.poolSizeCount = (uint32_t) IM_ARRAYSIZE(pool_sizes);
+		pool_info.poolSizeCount = static_cast<uint32_t>(IM_ARRAYSIZE(pool_sizes));
 		pool_info.pPoolSizes = pool_sizes;
 		err = vkCreateDescriptorPool(g_Device, &pool_info, g_Allocator, &g_DescriptorPool);
 		check_vk_result(err);
@@ -307,8 +307,8 @@ static void FrameRender(ImGui_ImplVulkanH_Window *wd, ImDrawData *draw_data){
 		info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		info.renderPass = wd->RenderPass;
 		info.framebuffer = fd->Framebuffer;
-		info.renderArea.extent.width = wd->Width;
-		info.renderArea.extent.height = wd->Height;
+		info.renderArea.extent.width = static_cast<uint32_t>(wd->Width);
+		info.renderArea.extent.height = static_cast<uint32_t>(wd->Height);
 		info.clearValueCount = 1;
 		info.pClearValues = &wd->ClearValue;
 		vkCmdBeginRenderPass(fd->CommandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
@@ -368,12 +368,13 @@ int WindowHandler::startGUI(){
 
 	// Create window with Vulkan context
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	std::shared_ptr<GLFWwindow> window(glfwCreateWindow(1280, 720, "Mid3SMPS", nullptr, nullptr),
-	                                   [](GLFWwindow *window){
-		                                   glfwDestroyWindow(window);
-	                                   });
+	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+	auto deleter = [](GLFWwindow *window){
+		glfwDestroyWindow(window);
+	};
+	std::shared_ptr<GLFWwindow> window(glfwCreateWindow(1280, 720, "Mid3SMPS", nullptr, nullptr), deleter);
 	if(!glfwVulkanSupported()){
-		printf("GLFW: Vulkan Not Supported\n");
+		fmt::print("GLFW: Vulkan Not Supported\n");
 		return 1;
 	}
 	uint32_t extensions_count = 0;
@@ -395,12 +396,12 @@ int WindowHandler::startGUI(){
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO &io = ImGui::GetIO();
-	//(void) io;
+	[[maybe_unused]] ImGuiIO &io = ImGui::GetIO();
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;            // Enable Docking
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Docking
+	io.ConfigViewportsNoAutoMerge = true;
 
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();
@@ -470,7 +471,7 @@ int WindowHandler::startGUI(){
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
 
-	addWindow(MID3SMPS::MainWindow(*this));
+	addWindow(MID3SMPS::MainWindow(*this), true);
 
 	// Main loop
 	while(!glfwWindowShouldClose(window.get())){
@@ -522,14 +523,15 @@ void WindowHandler::MainLoopStep(){
 	ImGui::NewFrame();
 
 	// Our state
+#ifdef DEBUG
 	// (we use static, which essentially makes the variable globals, as a convenience to keep the example code easy to follow)
 	static bool show_demo_window = true;
-	static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
 	if(show_demo_window){
 		ImGui::ShowDemoWindow(&show_demo_window);
 	}
+#endif
 
 	for(auto iter = windowList.begin(); iter != windowList.end();){
 		auto &win = *iter;
@@ -537,7 +539,7 @@ void WindowHandler::MainLoopStep(){
 			++iter;
 			continue;
 		}
-		iter = windowList.erase(iter); // reseat iterator to a valid value post-erase
+		iter = windowList.erase(iter); // reset iterator to a valid value post-erase
 	}
 
 	// Rendering
@@ -546,6 +548,7 @@ void WindowHandler::MainLoopStep(){
 	const bool is_minimized = (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f);
 	if(!is_minimized){
 		ImGui_ImplVulkanH_Window *wd = &g_MainWindowData;
+		static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 		wd->ClearValue.color.float32[0] = clear_color.x * clear_color.w;
 		wd->ClearValue.color.float32[1] = clear_color.y * clear_color.w;
 		wd->ClearValue.color.float32[2] = clear_color.z * clear_color.w;
@@ -558,5 +561,9 @@ void WindowHandler::MainLoopStep(){
 	if(ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable){
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
+	}
+
+	if(mainWindow.expired()){
+		glfwSetWindowShouldClose(window.get(), true);
 	}
 }

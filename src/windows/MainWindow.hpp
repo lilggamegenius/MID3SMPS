@@ -15,13 +15,13 @@ namespace MID3SMPS {
 		WindowHandler &windowHandler;
 		bool stayOpen = true;
 
-		fs::path currentMidiPath;
-		fs::path lastSmpsPath;
+		fs::path currentMidiPath{};
+		fs::path lastSmpsPath{};
 
-		libremidi::reader reader;
-		libremidi::reader::parse_result parseResult;
+		libremidi::reader reader{};
+		libremidi::reader::parse_result parseResult{};
 
-		fs::path currentMappingPath;
+		fs::path currentMappingPath{};
 
 		void showMenuBar();
 		void renderFileDialogs();
@@ -42,13 +42,13 @@ namespace MID3SMPS {
 
 		// Extras Menu
 		void openTempoCalculator();
-		bool convertSongTitle;
-		bool perFileInstruments;
+		bool convertSongTitle{};
+		bool perFileInstruments{};
 		bool autoReloadMidi = true;
-		bool autoOptimizeMidi;
+		bool autoOptimizeMidi{};
 
 	public:
-		explicit MainWindow(WindowHandler &windowHandler);
+		explicit MainWindow(WindowHandler &handler);
 		~MainWindow() override;
 		bool render() override;
 		void onClose() override;
