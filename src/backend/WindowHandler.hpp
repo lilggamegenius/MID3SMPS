@@ -2,7 +2,7 @@
 
 #include <list>
 #include <memory>
-#include "../Windows/window.hpp"
+#include "windows/window.hpp"
 
 class WindowHandler {
 	std::list<std::shared_ptr<Window>> windowList;

@@ -1,22 +1,33 @@
 #include "MainWindow.hpp"
 
-#include "imgui.h"
+#include <imgui.h>
+//#include <misc/cpp/imgui_stdlib.h>
 
-#include "ImGuiFileDialog.h"
+#include <ImGuiFileDialog.h>
 
 #include <thread>
 
 namespace MID3SMPS {
-	bool MainWindow::render(){
+	void MainWindow::render(){
 		if(!ImGui::Begin("Mid3SMPS", &stayOpen, ImGuiWindowFlags_MenuBar)){
 			ImGui::End();
-			return stayOpen;
+			return;
 		}
 		showMenuBar();
+		ImGui::SeparatorText("Loaded MIDI:");
+		static std::string midiPathCache = "No MIDI loaded";
+		if(midiPath.dirty()){
+			midiPathCache = midiPath->string();
+			midiPath.clearDirty();
+		}
+		auto windowWidth = ImGui::GetWindowSize().x;
+		auto textWidth   = ImGui::CalcTextSize(midiPathCache.c_str()).x;
+
+		ImGui::SetCursorPosX((windowWidth - textWidth) * 0.98f);
+		ImGui::TextUnformatted(midiPathCache.c_str());
 
 		ImGui::End();
 		renderFileDialogs();
-		return stayOpen;
 	}
 
 	void MainWindow::showMenuBar(){
@@ -39,6 +50,17 @@ namespace MID3SMPS {
 				saveSmpsMenu(true);
 			}
 			ImGui::Separator();
+			if(ImGui::MenuItem("Exit")){
+
+			}
+			ImGui::EndMenu();
+		}
+		if(ImGui::BeginMenu("Instruments & Mappings")){
+
+			ImGui::EndMenu();
+		}
+		if(ImGui::BeginMenu("Extras")){
+
 			ImGui::EndMenu();
 		}
 		ImGui::EndMenuBar();
@@ -61,7 +83,7 @@ namespace MID3SMPS {
 
 	void MainWindow::verifyAndSetMidi(fs::path&& midi){
 		// Read raw from a MIDI file
-		std::ifstream file{midi, std::ios::binary};
+		std::ifstream file{midi.string(), std::ios::binary};
 
 		std::vector<uint8_t> bytes;
 		bytes.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
@@ -84,16 +106,16 @@ namespace MID3SMPS {
 				std::unreachable();
 		}
 
-		currentMidiPath = midi;
+		midiPath = midi;
 	}
 
 	void MainWindow::saveSmpsMenu(bool saveAs){
-		if(saveAs) ImGuiFileDialog::Instance()->OpenDialog("saveSmps", "Select a destination", ".bin", ".", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
-		else std::thread(&MainWindow::saveSmps, this, lastSmpsPath).detach();
+		if(saveAs ) ImGuiFileDialog::Instance()->OpenDialog("saveSmps", "Select a destination", ".bin", ".", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
+		else std::thread(&MainWindow::saveSmps, this, *lastSmpsPath).detach();
 	}
 
 	void MainWindow::saveSmps(const fs::path &path){
-		if(path != lastSmpsPath) lastSmpsPath = path;
+		lastSmpsPath = path; // Dirty is set automatically if path is different
 
 	}
 
@@ -123,6 +145,10 @@ namespace MID3SMPS {
 
 	void MainWindow::onClose(){
 
+	}
+
+	bool MainWindow::keep() const{
+		return stayOpen;
 	}
 
 	MainWindow::MainWindow(WindowHandler &handler) : windowHandler(handler){

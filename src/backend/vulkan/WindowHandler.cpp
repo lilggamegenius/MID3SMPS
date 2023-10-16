@@ -10,8 +10,8 @@
 // Read comments in imgui_impl_vulkan.h.
 #include <fmt/core.h>
 
-#include "../WindowHandler.hpp"
-#include "../../windows/MainWindow.hpp"
+#include "backend/WindowHandler.hpp"
+#include "windows/MainWindow.hpp"
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -534,11 +534,13 @@ void WindowHandler::MainLoopStep(){
 #endif
 
 	for(auto iter = windowList.begin(); iter != windowList.end();){
-		auto &win = *iter;
-		if(win->render()){
+		auto win = *iter;
+		win->render();
+		if(win->keep()){
 			++iter;
 			continue;
 		}
+		win->onClose();
 		iter = windowList.erase(iter); // reset iterator to a valid value post-erase
 	}
 

@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Window.hpp"
-#include "../backend/WindowHandler.hpp"
+#include "backend/WindowHandler.hpp"
+#include "containers/dirtyable.hpp"
 
 #include "libremidi/libremidi.hpp"
 #include "libremidi/reader.hpp"
@@ -15,13 +16,13 @@ namespace MID3SMPS {
 		WindowHandler &windowHandler;
 		bool stayOpen = true;
 
-		fs::path currentMidiPath{};
-		fs::path lastSmpsPath{};
+		dirtyable<fs::path> midiPath{};
+		dirtyable<fs::path> lastSmpsPath{};
 
 		libremidi::reader reader{};
 		libremidi::reader::parse_result parseResult{};
 
-		fs::path currentMappingPath{};
+		dirtyable<fs::path> mappingPath{};
 
 		void showMenuBar();
 		void renderFileDialogs();
@@ -30,7 +31,7 @@ namespace MID3SMPS {
 		// File Menu
 		//void openMidiMenu();
 		void saveSmpsMenu(bool saveAs = false);
-		void saveSmps(const fs::path& path);
+		void saveSmps(const fs::path &path);
 		void exitMenu();
 
 		// Instruments & Mappings Menu
@@ -50,7 +51,8 @@ namespace MID3SMPS {
 	public:
 		explicit MainWindow(WindowHandler &handler);
 		~MainWindow() override;
-		bool render() override;
+		void render() override;
 		void onClose() override;
+		[[nodiscard]] bool keep() const override;
 	};
 } // MID3SMPS

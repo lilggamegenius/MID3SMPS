@@ -31,7 +31,6 @@ ELSE ()
 	set(DisplayAPI sdl)
 	set(DisplayAPILib ${SDL2_LIBRARIES})
 ENDIF ()
-include_directories(SYSTEM lib/imgui lib/imgui/backends lib/ImGuiFileDialog lib/libremidi/include)
 
 set(src src/backend/${DisplayAPI}/WindowHandler.cpp src/windows/MainWindow.cpp src/windows/MainWindow.hpp)
 
@@ -96,6 +95,9 @@ endif()
 
 add_library(ImGUI ${imguiSrc} ${imguiBackendSrc})
 target_link_libraries(ImGUI ${DisplayAPILib})
+
+include_directories(SYSTEM lib/imgui lib/imgui/backends lib/ImGuiFileDialog lib/libremidi/include)
+include_directories(src)
 
 add_executable(MID3SMPS ${src})
 target_compile_options(MID3SMPS PUBLIC ${WARNING_FLAGS}) # Applies to all sources
