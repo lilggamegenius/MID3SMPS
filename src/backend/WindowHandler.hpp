@@ -2,19 +2,18 @@
 
 #include <list>
 #include <memory>
-#include "windows/window.hpp"
+#include "windows/Window.hpp"
+#include <imguiwrap.h>
 
 class WindowHandler {
 	std::list<std::shared_ptr<Window>> windowList;
-	std::weak_ptr<Window> mainWindow;
+	std::shared_ptr<Window> mainWindow;
+	ImGuiWrapConfig config;
 
 public:
 	template<typename Window>
-	void addWindow(Window&& window, bool isMainWindow = false) {
+	void addWindow(Window&& window) {
 		windowList.push_back(std::make_shared<Window>(window));
-		if(isMainWindow){
-			mainWindow = windowList.back();
-		}
 	}
 
 	template<typename Window>
@@ -31,6 +30,8 @@ public:
 		}
 	}
 
-	int startGUI();
-	void MainLoopStep();
+	[[nodiscard]] const ImGuiWrapConfig& Config() const;
+
+	WindowHandler();
+	ImGuiWrapperReturnType MainLoopStep();
 };

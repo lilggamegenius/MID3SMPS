@@ -4,8 +4,8 @@
 #include "backend/WindowHandler.hpp"
 #include "containers/dirtyable.hpp"
 
-#include "libremidi/libremidi.hpp"
-#include "libremidi/reader.hpp"
+#include <libremidi/libremidi.hpp>
+#include <libremidi/reader.hpp>
 
 #include <filesystem>
 
