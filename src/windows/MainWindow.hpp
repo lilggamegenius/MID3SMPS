@@ -24,6 +24,11 @@ namespace MID3SMPS {
 
 		dirtyable<fs::path> mappingPath{};
 
+		int ticksPerQuarter = 0;
+		int ticksMultiplier = 0;
+
+		int ticksMidiResolution = 0;
+
 		void showMenuBar();
 		void renderFileDialogs();
 		void verifyAndSetMidi(fs::path&& midi);

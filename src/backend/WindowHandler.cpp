@@ -2,15 +2,17 @@
 
 #include "backend/WindowHandler.hpp"
 #include "windows/MainWindow.hpp"
+#include "GLFW/glfw3.h"
 #include <imguiwrap.h>
 #include <imguiwrap.dear.h>
 
 int main(){
 	WindowHandler handler;
-	return imgui_main(handler.Config(), [&handler]{ return handler.MainLoopStep(); });
+	return imgui_main(handler.config(), [&handler]{ return handler.MainLoopStep(); });
 }
 
 ImGuiWrapperReturnType WindowHandler::MainLoopStep(){
+	IdleBySleeping();
 	// Our state
 #ifdef DEBUG
 	// (we use static, which essentially makes the variable globals, as a convenience to keep the example code easy to follow)
@@ -47,17 +49,43 @@ ImGuiWrapperReturnType WindowHandler::MainLoopStep(){
 
 // Init code
 WindowHandler::WindowHandler(){
-	config.enableVsync_ = true;
-	config.windowTitle_ = "Mid3SMPS";
-	config.enableDocking_ = true;
-	config.enableViewport_ = true;
-	config.enableViewportAutoMerge_ = false;
-	config.hideMainWindow_ = true;
+	config_.enableVsync_ = true;
+	config_.windowTitle_ = "Mid3SMPS";
+	config_.enableDocking_ = true;
+	config_.enableViewport_ = true;
+	config_.enableViewportAutoMerge_ = false;
+	config_.hideMainWindow_ = true;
 
 	mainWindow = std::make_shared<MID3SMPS::MainWindow>(*this);
 }
 
-const ImGuiWrapConfig &WindowHandler::Config() const{
-	return config;
+void WindowHandler::IdleBySleeping(){
+	using namespace std::chrono;
+	idling_.isIdling = false;
+	if(idling_.isIdleOverride()){
+		return;
+	}
+	if ((idling_.fpsIdle > 0) && idling_.enableIdling){
+		auto beforeWait = system_clock::now();
+		//double waitTimeout = 1. / static_cast<double>(idling_.fpsIdle);
+		double waitTimeout = 1. / static_cast<double>(idling_.fpsIdle);
+
+		// Backend specific call that will wait for an event for a maximum duration of waitTimeout
+		// (for example glfwWaitEventsTimeout(timeout_seconds))
+		glfwWaitEventsTimeout(waitTimeout);
+
+		auto afterWait = system_clock::now();
+		auto waitDuration = (afterWait - beforeWait);
+		std::chrono::milliseconds waitIdleExpected(1000 / idling_.fpsIdle);
+		idling_.isIdling = (waitDuration > waitIdleExpected * 0.9);
+	}
+}
+
+const ImGuiWrapConfig &WindowHandler::config() const noexcept{
+	return config_;
+}
+
+FpsIdling& WindowHandler::idling() noexcept{
+	return idling_;
 }
 

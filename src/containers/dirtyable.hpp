@@ -6,10 +6,10 @@
 template<typename T, bool autoDirty = false>
 class dirtyable{
 	std::optional<T> data = std::nullopt;
-	bool isDirty = false;
+	bool isDirty = true;
 
 public:
-	constexpr dirtyable(){}
+	constexpr dirtyable() = default;
 
 	constexpr explicit dirtyable(T&& newData){
 		data = newData;

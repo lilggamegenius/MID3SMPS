@@ -1,47 +1,68 @@
 #include "MainWindow.hpp"
 
 #include <imgui.h>
+#include <imguiwrap.dear.h>
 
 #include <ImGuiFileDialog.h>
 
 #include <thread>
+#include <fmt/core.h>
 
 namespace MID3SMPS {
-	void MainWindow::render(){
-		if(!ImGui::Begin("Mid3SMPS", &stayOpen, ImGuiWindowFlags_MenuBar)){
-			ImGui::End();
-			return;
-		}
-		showMenuBar();
-		ImGui::SeparatorText("Loaded MIDI:");
-		static std::string midiPathCache = "No MIDI loaded";
-		if(midiPath.dirty()){
-			midiPathCache = midiPath->string();
-			midiPath.clearDirty();
+	template<typename T>
+	void CachedRightText(dirtyable<T> &variable, std::string &cache, const std::string &emptyText){
+		if(variable.dirty()){
+			if(variable->empty()){
+				cache = emptyText;
+			} else{
+				cache = variable->string();
+			}
+			variable.clearDirty();
 		}
 		auto windowWidth = ImGui::GetWindowSize().x;
-		auto textWidth   = ImGui::CalcTextSize(midiPathCache.c_str()).x;
+		auto textWidth   = ImGui::CalcTextSize(cache.c_str()).x;
 
 		ImGui::SetCursorPosX((windowWidth - textWidth) * 0.98f);
-		ImGui::TextUnformatted(midiPathCache.c_str());
+		ImGui::TextUnformatted(cache.c_str());
+	}
 
-		ImGui::End();
+	void MainWindow::render(){
+		{
+			dear::Begin mainWindow("Mid3SMPS", &stayOpen, ImGuiWindowFlags_MenuBar);
+			if(!mainWindow){ return; }
+			showMenuBar();
+			ImGui::SeparatorText("Loaded MIDI:");
+			static std::string midiPathCache;
+			CachedRightText(midiPath, midiPathCache, "No MIDI loaded");
+
+			ImGui::SeparatorText("Loaded Bank:");
+			static std::string bankPathCache;
+			CachedRightText(mappingPath, bankPathCache, "No bank loaded");
+
+			ImGui::SeparatorText("Ticks/Quarter");
+			ImGui::SameLine(); ImGui::SeparatorText("MIDI Resolution");
+
+			if(ImGui::InputInt("Ticks/Quarter", &ticksPerQuarter)){
+				ticksPerQuarter = std::clamp(ticksPerQuarter, 0, 999);
+			}
+		}
+
 		renderFileDialogs();
 	}
 
 	void MainWindow::showMenuBar(){
 		ImGui::PushItemWidth(ImGui::GetFontSize() * -12);
-		if(!ImGui::BeginMenuBar()){
+		dear::MenuBar menuBar;
+		if(!menuBar){
 			return;
 		}
-		if(ImGui::BeginMenu("File")){
+		dear::Menu("File") && [this]{
 			if(ImGui::MenuItem("Open Midi", "Ctrl+O")){
 				ImGuiFileDialog::Instance()->OpenDialog("OpenMidi", "Choose a Midi file", ".mid,.midi", ".");
 			}
-			if(ImGui::BeginMenu("Open Recent")){
+			dear::Menu("Open Recent") && [] {
 				// Do stuff...
-				ImGui::EndMenu();
-			}
+			};
 			if(ImGui::MenuItem("Save", "Ctrl+S")){
 				saveSmpsMenu();
 			}
@@ -50,31 +71,53 @@ namespace MID3SMPS {
 			}
 			ImGui::Separator();
 			if(ImGui::MenuItem("Exit")){
-
+				exitMenu();
 			}
-			ImGui::EndMenu();
-		}
-		if(ImGui::BeginMenu("Instruments & Mappings")){
+		};
+		dear::Menu("Instruments & Mappings") && []{
 
-			ImGui::EndMenu();
-		}
-		if(ImGui::BeginMenu("Extras")){
+		};
+		dear::Menu("Extras") && [this]{
+			static bool override;
+			ImGui::Checkbox("Override Idle", &override);
+			static FpsIdling::Override idleOverride;
+			if(override && !idleOverride){
+				idleOverride = windowHandler.idling().getOverride();
+			} else if (!override && idleOverride){
+				idleOverride = {};
+			}
+		};
+	}
 
-			ImGui::EndMenu();
+	fs::path getPathFromFileDialog(){
+		std::string pathStr = ImGuiFileDialog::Instance()->GetCurrentFileName();
+		if(pathStr.front() == '"' && pathStr.back() == '"'){ // Checks for a quoted path, like what windows gives when you do "Copy as path"
+			pathStr = pathStr.substr(1, pathStr.length()-2);
 		}
-		ImGui::EndMenuBar();
+		fs::path path = pathStr;
+		if(path.is_absolute()){
+			return path;
+		}
+		fs::path parent = ImGuiFileDialog::Instance()->GetCurrentPath();
+		return parent / path;
 	}
 
 	void MainWindow::renderFileDialogs(){
 		if(ImGuiFileDialog::Instance()->Display("OpenMidi")){
 			if(ImGuiFileDialog::Instance()->IsOk()){
-				std::thread(&MainWindow::verifyAndSetMidi, this, ImGuiFileDialog::Instance()->GetFilePathName()).detach();
+				fs::path path = getPathFromFileDialog();
+				if(fs::exists(path)){
+					std::thread(&MainWindow::verifyAndSetMidi, this, std::move(path)).detach();
+				} else {
+					fmt::print(stderr, "{} is not a valid path", path.string());
+				}
 			}
 			ImGuiFileDialog::Instance()->Close();
 		}
 		if(ImGuiFileDialog::Instance()->Display("saveSmps")){
 			if(ImGuiFileDialog::Instance()->IsOk()){
-				std::thread(&MainWindow::saveSmps, this, ImGuiFileDialog::Instance()->GetFilePathName()).detach();
+				fs::path path = getPathFromFileDialog();
+				std::thread(&MainWindow::saveSmps, this, std::move(path)).detach();
 			}
 			ImGuiFileDialog::Instance()->Close();
 		}
@@ -92,6 +135,7 @@ namespace MID3SMPS {
 		switch(parseResult){
 			case libremidi::reader::invalid:
 				// Throw error
+				fmt::print(stderr, "Invalid midi file");
 				return;
 			case libremidi::reader::incomplete:
 				// Print warning
@@ -106,11 +150,15 @@ namespace MID3SMPS {
 		}
 
 		midiPath = midi;
+		midiPath.markDirty();
 	}
 
 	void MainWindow::saveSmpsMenu(bool saveAs){
-		if(saveAs ) ImGuiFileDialog::Instance()->OpenDialog("saveSmps", "Select a destination", ".bin", ".", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
-		else std::thread(&MainWindow::saveSmps, this, *lastSmpsPath).detach();
+		if(saveAs) {
+			ImGuiFileDialog::Instance()->OpenDialog("saveSmps", "Select a destination", ".bin", ".", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
+		} else {
+			std::thread(&MainWindow::saveSmps, this, *lastSmpsPath).detach();
+		}
 	}
 
 	void MainWindow::saveSmps(const fs::path &path){
