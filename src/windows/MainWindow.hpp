@@ -27,7 +27,9 @@ namespace MID3SMPS {
 		int ticksPerQuarter = 0;
 		int ticksMultiplier = 0;
 
-		int ticksMidiResolution = 0;
+		int midiResolution = 0;
+
+		mutable std::string status;
 
 		void showMenuBar();
 		void renderFileDialogs();

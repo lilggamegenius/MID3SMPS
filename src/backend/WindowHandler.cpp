@@ -60,12 +60,18 @@ WindowHandler::WindowHandler(){
 }
 
 void WindowHandler::IdleBySleeping(){
-	using namespace std::chrono;
+	constexpr uint_fast8_t framesToWait = 2;
+	static uint_fast8_t framesBeforeIdle = framesToWait;
 	idling_.isIdling = false;
 	if(idling_.isIdleOverride()){
+		framesBeforeIdle = framesToWait;
 		return;
 	}
+	if(framesBeforeIdle > 0){
+		framesBeforeIdle--;
+	}
 	if ((idling_.fpsIdle > 0) && idling_.enableIdling){
+		using namespace std::chrono;
 		auto beforeWait = system_clock::now();
 		//double waitTimeout = 1. / static_cast<double>(idling_.fpsIdle);
 		double waitTimeout = 1. / static_cast<double>(idling_.fpsIdle);
@@ -76,7 +82,7 @@ void WindowHandler::IdleBySleeping(){
 
 		auto afterWait = system_clock::now();
 		auto waitDuration = (afterWait - beforeWait);
-		std::chrono::milliseconds waitIdleExpected(1000 / idling_.fpsIdle);
+		milliseconds waitIdleExpected(1000 / idling_.fpsIdle);
 		idling_.isIdling = (waitDuration > waitIdleExpected * 0.9);
 	}
 }

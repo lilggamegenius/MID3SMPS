@@ -8,6 +8,8 @@
 #include <thread>
 #include <fmt/core.h>
 
+using namespace std::literals;
+
 namespace MID3SMPS {
 	template<typename T>
 	void CachedRightText(dirtyable<T> &variable, std::string &cache, const std::string &emptyText){
@@ -22,29 +24,58 @@ namespace MID3SMPS {
 		auto windowWidth = ImGui::GetWindowSize().x;
 		auto textWidth   = ImGui::CalcTextSize(cache.c_str()).x;
 
-		ImGui::SetCursorPosX((windowWidth - textWidth) * 0.98f);
+		//ImGui::SetCursorPosX((windowWidth - textWidth) * 0.98f);
 		ImGui::TextUnformatted(cache.c_str());
 	}
 
 	void MainWindow::render(){
 		{
-			dear::Begin mainWindow("Mid3SMPS", &stayOpen, ImGuiWindowFlags_MenuBar);
+			dear::Begin mainWindow("Mid3SMPS", &stayOpen, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 			if(!mainWindow){ return; }
 			showMenuBar();
-			ImGui::SeparatorText("Loaded MIDI:");
+
+			//const auto windowWidth = ImGui::GetWindowSize().x;
+			const auto windowHeight = ImGui::GetWindowSize().y;
+
+			dear::TextUnformatted("Loaded MIDI:"s); ImGui::SameLine();
 			static std::string midiPathCache;
-			CachedRightText(midiPath, midiPathCache, "No MIDI loaded");
+			CachedRightText(midiPath, midiPathCache, "No MIDI loaded"s);
+			ImGui::NewLine();
 
-			ImGui::SeparatorText("Loaded Bank:");
+			dear::TextUnformatted("Loaded Bank:"s); ImGui::SameLine();
 			static std::string bankPathCache;
-			CachedRightText(mappingPath, bankPathCache, "No bank loaded");
+			CachedRightText(mappingPath, bankPathCache, "No bank loaded"s);
+			ImGui::NewLine();
 
-			ImGui::SeparatorText("Ticks/Quarter");
-			ImGui::SameLine(); ImGui::SeparatorText("MIDI Resolution");
-
-			if(ImGui::InputInt("Ticks/Quarter", &ticksPerQuarter)){
+			ImGui::PushItemWidth(40);
+			if(ImGui::InputInt("Ticks/Quarter", &ticksPerQuarter, 0, 0)){
 				ticksPerQuarter = std::clamp(ticksPerQuarter, 0, 999);
 			}
+			ImGui::SameLine();
+
+			ImGui::PushItemWidth(40);
+			ImGui::InputInt("MIDI Resolution", &midiResolution, 0, 0, ImGuiInputTextFlags_ReadOnly);
+
+			if(ImGui::InputInt("Tick Multiplier", &ticksMultiplier, 0, 0)){
+				ticksMultiplier = std::clamp(ticksMultiplier, 0, 999);
+			}
+
+			ImGui::NewLine();
+			if(ImGui::Button("Load Ins. Lib.")){
+				const static std::string statusMsg = "Clicked \"Load Ins. Lib.\"";
+				status = statusMsg;
+			}
+			ImGui::SameLine();
+			if(ImGui::Button("Quick Convert")){
+				const static std::string statusMsg = "Clicked \"Quick Convert\"";
+				status = statusMsg;
+			}
+
+			ImGui::SetCursorPosY(windowHeight - 20);
+			ImGui::SetNextWindowBgAlpha(0.75f);
+			dear::Child("Status Bar") && [&]{
+				dear::Text(fmt::format("{}", status));
+			};
 		}
 
 		renderFileDialogs();
