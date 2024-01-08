@@ -1,21 +1,17 @@
-#include <fmt/core.h>
-
 #include "backend/WindowHandler.hpp"
 #include "windows/MainWindow.hpp"
 #include "GLFW/glfw3.h"
 #include <imguiwrap.h>
-#include <imguiwrap.dear.h>
+
 
 int main(){
-	WindowHandler handler;
-	return imgui_main(handler.config(), [&handler]{ return handler.MainLoopStep(); });
+	auto handler = std::make_unique<WindowHandler>();
+	return imgui_main(handler->config(), [&handler]{ return handler->MainLoopStep(); });
 }
 
 ImGuiWrapperReturnType WindowHandler::MainLoopStep(){
 	IdleBySleeping();
-	// Our state
 #ifdef DEBUG
-	// (we use static, which essentially makes the variable globals, as a convenience to keep the example code easy to follow)
 	static bool show_demo_window = true;
 
 	// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
@@ -24,26 +20,11 @@ ImGuiWrapperReturnType WindowHandler::MainLoopStep(){
 	}
 #endif
 	mainWindow->render();
-
-	for(auto iter = windowList.begin(); iter != windowList.end();){
-		auto win = *iter;
-		try{
-			win->render();
-			if(win->keep()){
-				++iter;
-				continue;
-			}
-		} catch(std::runtime_error &error){
-			fmt::print(stderr, "std::runtime_error: {}", error.what());
-		}catch(std::exception &error){
-			fmt::print(stderr, "std::exception: {}", error.what());
-		}
-		win->onClose();
-		iter = windowList.erase(iter); // reset iterator to a valid value post-erase
-	}
+	mainWindow->renderChildren();
 	if(mainWindow->keep()){
 		return std::nullopt;
 	}
+	mainWindow->onClose();
 	return 0;
 }
 
@@ -56,7 +37,7 @@ WindowHandler::WindowHandler(){
 	config_.enableViewportAutoMerge_ = false;
 	config_.hideMainWindow_ = true;
 
-	mainWindow = std::make_shared<MID3SMPS::MainWindow>(*this);
+	mainWindow = std::make_unique<MID3SMPS::MainWindow>(*this);
 }
 
 void WindowHandler::IdleBySleeping(){
@@ -72,17 +53,17 @@ void WindowHandler::IdleBySleeping(){
 	}
 	if ((idling_.fpsIdle > 0) && idling_.enableIdling){
 		using namespace std::chrono;
-		auto beforeWait = system_clock::now();
+		const auto beforeWait = system_clock::now();
 		//double waitTimeout = 1. / static_cast<double>(idling_.fpsIdle);
-		double waitTimeout = 1. / static_cast<double>(idling_.fpsIdle);
+		const double waitTimeout = 1. / static_cast<double>(idling_.fpsIdle);
 
 		// Backend specific call that will wait for an event for a maximum duration of waitTimeout
 		// (for example glfwWaitEventsTimeout(timeout_seconds))
 		glfwWaitEventsTimeout(waitTimeout);
 
-		auto afterWait = system_clock::now();
-		auto waitDuration = (afterWait - beforeWait);
-		milliseconds waitIdleExpected(1000 / idling_.fpsIdle);
+		const auto afterWait    = system_clock::now();
+		const auto waitDuration = (afterWait - beforeWait);
+		const milliseconds waitIdleExpected(1000 / idling_.fpsIdle);
 		idling_.isIdling = (waitDuration > waitIdleExpected * 0.9);
 	}
 }

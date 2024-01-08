@@ -1,18 +1,17 @@
 #pragma once
 
+#include <filesystem>
+
+#include "MainWindow.inc.hpp" // Workaround to supress warnings from headers
+
 #include "Window.hpp"
 #include "backend/WindowHandler.hpp"
 #include "containers/dirtyable.hpp"
 
-#include <libremidi/libremidi.hpp>
-#include <libremidi/reader.hpp>
-
-#include <filesystem>
-
 namespace fs = std::filesystem;
 
 namespace MID3SMPS {
-	class MainWindow : public Window{
+	class MainWindow final : public Window{
 		WindowHandler &windowHandler;
 		bool stayOpen = true;
 
@@ -62,4 +61,6 @@ namespace MID3SMPS {
 		void onClose() override;
 		[[nodiscard]] bool keep() const override;
 	};
+
+	fs::path getPathFromFileDialog();
 } // MID3SMPS

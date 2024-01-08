@@ -32,7 +32,7 @@ public:
 		isDirty = false;
 	}
 
-	constexpr bool dirty(){
+	[[nodiscard]] constexpr bool dirty() const {
 		return isDirty;
 	}
 
@@ -74,7 +74,7 @@ public:
 		return *this;
 	}
 
-	constexpr dirtyable(dirtyable&& other){
+	constexpr dirtyable(dirtyable&& other) noexcept {
 		if(*other != *data){
 			isDirty = other.isDirty;
 		}
@@ -92,7 +92,7 @@ public:
 		return *data <=> otherData;
 	}
 
-	constexpr auto operator <=>(const dirtyable<T, autoDirty> &otherData) const {
+	constexpr auto operator <=>(const dirtyable &otherData) const {
 		return *data <=> *otherData;
 	}
 };

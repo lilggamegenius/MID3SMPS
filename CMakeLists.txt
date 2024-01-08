@@ -11,7 +11,9 @@ find_package(gcem CONFIG REQUIRED)
 add_subdirectory(lib/libremidi)
 add_subdirectory(lib/imguiwrap)
 
-set(src src/backend/WindowHandler.cpp src/windows/MainWindow.cpp src/windows/MainWindow.hpp)
+set(src src/backend/WindowHandler.cpp src/windows/MainWindow.cpp src/windows/MainWindow.hpp
+		src/windows/ym2612Edit.cpp src/windows/ym2612Edit.hpp
+)
 
 set(imguiSrc
 		lib/ImGuiFileDialog/ImGuiFileDialog.cpp
@@ -24,7 +26,7 @@ if(MSVC)
 	)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
 	set(WARNING_FLAGS
-			#-Werror    # Turns all warnings into errors
+			-Werror    # Turns all warnings into errors
 			-Wall   # Enable most warning messages.
 			-Wextra # Print extra (possibly unwanted) warnings.
 			-Wpedantic # Issue warnings needed for strict compliance to the standard.
@@ -48,6 +50,8 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
 			-Wzero-as-null-pointer-constant # Warn when a literal '0' is used as null pointer.
 
 			#-Wno-unknown-pragmas # Disables warning about unknown pragmas since both clion and clang-tidy use their own
+
+			-Wno-error=missing-include-dirs # One of the libraries is causing this warning to show up but IDK which
 	)
 	if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 		set(WARNING_FLAGS ${WARNING_FLAGS}
@@ -70,14 +74,19 @@ if(${FORCE_COLORED_OUTPUT})
 	endif()
 endif()
 
-include_directories(SYSTEM lib/imguiwrap/vendor/imgui/src lib/ImGuiFileDialog lib/libremidi/include)
-include_directories(src)
-
 add_library(ImGuiFileDialog ${imguiSrc})
+target_include_directories(ImGuiFileDialog SYSTEM PRIVATE lib/imguiwrap/vendor/imgui/src)
+target_compile_options(ImGuiFileDialog PRIVATE "-w") # Disable warnings since its not our project to maintain
 
 add_executable(MID3SMPS ${src})
+target_include_directories(MID3SMPS SYSTEM PRIVATE
+		"${CMAKE_SOURCE_DIR}/lib/imguiwrap/vendor/imgui/src"
+		"${CMAKE_SOURCE_DIR}/lib/ImGuiFileDialog"
+		"${CMAKE_SOURCE_DIR}/lib/libremidi/include/libremidi"
+)
+target_include_directories(MID3SMPS PRIVATE src)
 target_compile_options(MID3SMPS PUBLIC ${WARNING_FLAGS})
-target_link_libraries(MID3SMPS imguiwrap ImGuiFileDialog fmt::fmt-header-only libremidi gcem)
+target_link_libraries(MID3SMPS imguiwrap ImGuiFileDialog fmt::fmt-header-only libremidi::libremidi gcem)
 target_compile_definitions(MID3SMPS
 		PRIVATE
 		# If the debug configuration pass the DEBUG define to the compiler

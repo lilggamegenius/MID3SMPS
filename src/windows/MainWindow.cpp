@@ -1,10 +1,8 @@
 #include "MainWindow.hpp"
 
 #include <imgui.h>
-#include <imguiwrap.dear.h>
-
 #include <ImGuiFileDialog.h>
-
+#include <imguiwrap.dear.h>
 #include <thread>
 #include <fmt/core.h>
 
@@ -21,8 +19,8 @@ namespace MID3SMPS {
 			}
 			variable.clearDirty();
 		}
-		auto windowWidth = ImGui::GetWindowSize().x;
-		auto textWidth   = ImGui::CalcTextSize(cache.c_str()).x;
+		//auto windowWidth = ImGui::GetWindowSize().x;
+		//auto textWidth   = ImGui::CalcTextSize(cache.c_str()).x;
 
 		//ImGui::SetCursorPosX((windowWidth - textWidth) * 0.98f);
 		ImGui::TextUnformatted(cache.c_str());
@@ -30,7 +28,7 @@ namespace MID3SMPS {
 
 	void MainWindow::render(){
 		{
-			dear::Begin mainWindow("Mid3SMPS", &stayOpen, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+			const dear::Begin mainWindow("Mid3SMPS", &stayOpen, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 			if(!mainWindow){ return; }
 			showMenuBar();
 
@@ -83,7 +81,7 @@ namespace MID3SMPS {
 
 	void MainWindow::showMenuBar(){
 		ImGui::PushItemWidth(ImGui::GetFontSize() * -12);
-		dear::MenuBar menuBar;
+		const dear::MenuBar menuBar;
 		if(!menuBar){
 			return;
 		}
@@ -129,15 +127,14 @@ namespace MID3SMPS {
 		if(path.is_absolute()){
 			return path;
 		}
-		fs::path parent = ImGuiFileDialog::Instance()->GetCurrentPath();
+		const fs::path parent = ImGuiFileDialog::Instance()->GetCurrentPath();
 		return parent / path;
 	}
 
 	void MainWindow::renderFileDialogs(){
 		if(ImGuiFileDialog::Instance()->Display("OpenMidi")){
 			if(ImGuiFileDialog::Instance()->IsOk()){
-				fs::path path = getPathFromFileDialog();
-				if(fs::exists(path)){
+				if(fs::path path = getPathFromFileDialog(); fs::exists(path)){
 					std::thread(&MainWindow::verifyAndSetMidi, this, std::move(path)).detach();
 				} else {
 					fmt::print(stderr, "{} is not a valid path", path.string());
@@ -159,21 +156,17 @@ namespace MID3SMPS {
 		std::ifstream file{midi.string(), std::ios::binary};
 
 		std::vector<uint8_t> bytes;
-		bytes.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+		bytes.assign(std::istreambuf_iterator(file), std::istreambuf_iterator<char>());
 
-// Parse
+		// Parse
 		parseResult = reader.parse(bytes);
 		switch(parseResult){
 			case libremidi::reader::invalid:
 				// Throw error
 				fmt::print(stderr, "Invalid midi file");
 				return;
-			case libremidi::reader::incomplete:
-				// Print warning
-				break;
-			case libremidi::reader::complete:
-				// Print message
-				break;
+			case libremidi::reader::incomplete: // Print warning
+			case libremidi::reader::complete: // Print message
 			case libremidi::reader::validated:
 				break;
 			default:

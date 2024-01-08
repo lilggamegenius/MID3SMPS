@@ -1,10 +1,11 @@
 #pragma once
 
+#include <atomic>
+#include <imguiwrap.h>
 #include <list>
 #include <memory>
+
 #include "windows/Window.hpp"
-#include <imguiwrap.h>
-#include <atomic>
 
 struct FpsIdling{
 	uint_fast8_t fpsIdle = 5;         // FPS when idling_
@@ -12,7 +13,7 @@ struct FpsIdling{
 	bool  isIdling = false;      // an output parameter filled by the runner
 	std::atomic<uint_fast8_t> overrides = 0;
 
-	inline bool isIdleOverride(){
+	[[nodiscard]] bool isIdleOverride() const{
 		return overrides > 0;
 	}
 
@@ -21,7 +22,7 @@ struct FpsIdling{
 		FpsIdling* ref = nullptr;
 
 		constexpr explicit Override(FpsIdling& ref_) : ref(&ref_) {
-			ref->overrides++;
+			++ref->overrides;
 		}
 
 	public:
@@ -34,7 +35,7 @@ struct FpsIdling{
 
 		constexpr ~Override() noexcept{
 			if(!ref) { return; }
-			ref->overrides--;
+			--ref->overrides;
 		}
 
 		constexpr Override& operator =(Override &&other) noexcept{
@@ -45,45 +46,26 @@ struct FpsIdling{
 		constexpr Override& operator =(const Override &other) noexcept{
 			if(this == &other) { return *this; }
 			ref = other.ref;
-			ref->overrides++;
+			++ref->overrides;
 			return *this;
 		}
 
-		constexpr operator bool(){
+		constexpr operator bool() const {
 			return ref;
 		}
 	};
 
-	inline Override getOverride(){
+	[[nodiscard]] Override getOverride(){
 		return Override(*this);
 	}
 };
 
 class WindowHandler {
-	std::list<std::shared_ptr<Window>> windowList;
-	std::shared_ptr<Window> mainWindow;
+	std::unique_ptr<Window> mainWindow;
 	ImGuiWrapConfig config_;
 	FpsIdling idling_;
 
 public:
-	template<typename Window>
-	void addWindow(Window&& window) {
-		windowList.push_back(std::make_shared<Window>(window));
-	}
-
-	template<typename Window>
-	void removeWindow(const Window& window) {
-		std::shared_ptr<::Window> winPtr;
-		for (auto &win: windowList) {
-			if(win.get() != std::addressof(window)) continue;
-			winPtr = win;
-			break;
-		}
-
-		if(winPtr){
-			windowList.remove(winPtr);
-		}
-	}
 
 	[[nodiscard]] const ImGuiWrapConfig& config() const noexcept;
 	[[nodiscard]] FpsIdling& idling() noexcept;
