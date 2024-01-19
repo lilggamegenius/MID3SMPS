@@ -8,6 +8,15 @@
 
 using namespace std::literals;
 
+static const IGFD::FileDialogConfig DefaultFileDialogConfig{
+	.path = "",
+	.fileName = "",
+	.filePathName = ".",
+	.flags = ImGuiFileDialogFlags_ConfirmOverwrite,
+	.sidePane = nullptr,
+	.userFileAttributes = nullptr
+};
+
 namespace MID3SMPS {
 	template<typename T>
 	void CachedRightText(dirtyable<T> &variable, std::string &cache, const std::string &emptyText){
@@ -87,7 +96,7 @@ namespace MID3SMPS {
 		}
 		dear::Menu("File") && [this]{
 			if(ImGui::MenuItem("Open Midi", "Ctrl+O")){
-				ImGuiFileDialog::Instance()->OpenDialog("OpenMidi", "Choose a Midi file", ".mid,.midi", ".");
+				ImGuiFileDialog::Instance()->OpenDialog("OpenMidi", "Choose a Midi file", ".mid,.midi", DefaultFileDialogConfig);
 			}
 			dear::Menu("Open Recent") && [] {
 				// Do stuff...
@@ -119,9 +128,9 @@ namespace MID3SMPS {
 	}
 
 	fs::path getPathFromFileDialog(){
-		std::string pathStr = ImGuiFileDialog::Instance()->GetCurrentFileName();
-		if(pathStr.front() == '"' && pathStr.back() == '"'){ // Checks for a quoted path, like what windows gives when you do "Copy as path"
-			pathStr = pathStr.substr(1, pathStr.length()-2);
+		auto pathStr = ImGuiFileDialog::Instance()->GetCurrentFileName();
+		if(pathStr[0] == '"' && *--pathStr.end() == '"') { // Handle windows' "Copy as path" option
+			pathStr = pathStr.substr(1, pathStr.length() - 2);
 		}
 		fs::path path = pathStr;
 		if(path.is_absolute()){
@@ -135,9 +144,11 @@ namespace MID3SMPS {
 		if(ImGuiFileDialog::Instance()->Display("OpenMidi")){
 			if(ImGuiFileDialog::Instance()->IsOk()){
 				if(fs::path path = getPathFromFileDialog(); fs::exists(path)){
+					status = fmt::format("Loading {}", path.string());
 					std::thread(&MainWindow::verifyAndSetMidi, this, std::move(path)).detach();
 				} else {
-					fmt::print(stderr, "{} is not a valid path", path.string());
+					status = fmt::format("{} is not a valid path", path.string());
+					fmt::print(stderr, "{}", status);
 				}
 			}
 			ImGuiFileDialog::Instance()->Close();
@@ -163,11 +174,17 @@ namespace MID3SMPS {
 		switch(parseResult){
 			case libremidi::reader::invalid:
 				// Throw error
-				fmt::print(stderr, "Invalid midi file");
+				status = fmt::format("Invalid midi file");
+				fmt::print(stderr, "{}", status);
 				return;
-			case libremidi::reader::incomplete: // Print warning
-			case libremidi::reader::complete: // Print message
+			case libremidi::reader::incomplete:
+				status = fmt::format("Midi file loading incomplete");
+				break;
+			case libremidi::reader::complete:
+				status = fmt::format("Midi file loading complete but not validated");
+				break;
 			case libremidi::reader::validated:
+				status = fmt::format("Midi file loaded and validated");
 				break;
 			default:
 				std::unreachable();
@@ -179,7 +196,7 @@ namespace MID3SMPS {
 
 	void MainWindow::saveSmpsMenu(bool saveAs){
 		if(saveAs) {
-			ImGuiFileDialog::Instance()->OpenDialog("saveSmps", "Select a destination", ".bin", ".", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
+			ImGuiFileDialog::Instance()->OpenDialog("saveSmps", "Select a destination", ".bin", DefaultFileDialogConfig);
 		} else {
 			std::thread(&MainWindow::saveSmps, this, *lastSmpsPath).detach();
 		}

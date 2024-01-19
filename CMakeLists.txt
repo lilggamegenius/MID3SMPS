@@ -11,13 +11,9 @@ find_package(gcem CONFIG REQUIRED)
 add_subdirectory(lib/libremidi)
 add_subdirectory(lib/imguiwrap)
 
-set(src src/backend/WindowHandler.cpp src/windows/MainWindow.cpp src/windows/MainWindow.hpp
-		src/windows/ym2612Edit.cpp src/windows/ym2612Edit.hpp
-)
-
-set(imguiSrc
-		lib/ImGuiFileDialog/ImGuiFileDialog.cpp
-)
+add_library(ImGuiFileDialog lib/ImGuiFileDialog/ImGuiFileDialog.cpp)
+target_include_directories(ImGuiFileDialog SYSTEM PRIVATE lib/imguiwrap/vendor/imgui/src)
+target_compile_options(ImGuiFileDialog PRIVATE "-w") # Disable warnings since its not our project to maintain
 
 if(MSVC)
 	# Force to always compile with W4
@@ -74,19 +70,24 @@ if(${FORCE_COLORED_OUTPUT})
 	endif()
 endif()
 
-add_library(ImGuiFileDialog ${imguiSrc})
-target_include_directories(ImGuiFileDialog SYSTEM PRIVATE lib/imguiwrap/vendor/imgui/src)
-target_compile_options(ImGuiFileDialog PRIVATE "-w") # Disable warnings since its not our project to maintain
-
-add_executable(MID3SMPS ${src})
-target_include_directories(MID3SMPS SYSTEM PRIVATE
-		"${CMAKE_SOURCE_DIR}/lib/imguiwrap/vendor/imgui/src"
-		"${CMAKE_SOURCE_DIR}/lib/ImGuiFileDialog"
-		"${CMAKE_SOURCE_DIR}/lib/libremidi/include/libremidi"
+add_executable(MID3SMPS
+		src/backend/WindowHandler.cpp src/windows/MainWindow.cpp src/windows/MainWindow.hpp
+		src/windows/ym2612Edit.cpp src/windows/ym2612Edit.hpp
 )
+
+target_include_directories(MID3SMPS SYSTEM PRIVATE lib/ImGuiFileDialog)
+#target_include_directories(MID3SMPS SYSTEM PRIVATE lib/imguiwrap/vendor/imgui/src)
+
+get_property(_imguiwrap_include_dirs TARGET imguiwrap PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+set_property(TARGET imguiwrap PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_imguiwrap_include_dirs}")
+#target_include_directories(MID3SMPS SYSTEM PRIVATE lib/libremidi/include/libremidi)
+
+get_property(_libremidi_include_dirs TARGET libremidi PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+set_property(TARGET libremidi PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_libremidi_include_dirs}")
+
 target_include_directories(MID3SMPS PRIVATE src)
 target_compile_options(MID3SMPS PUBLIC ${WARNING_FLAGS})
-target_link_libraries(MID3SMPS imguiwrap ImGuiFileDialog fmt::fmt-header-only libremidi::libremidi gcem)
+target_link_libraries(MID3SMPS imguiwrap ImGuiFileDialog fmt::fmt-header-only libremidi gcem)
 target_compile_definitions(MID3SMPS
 		PRIVATE
 		# If the debug configuration pass the DEBUG define to the compiler

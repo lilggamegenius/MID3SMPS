@@ -2,7 +2,8 @@
 
 #include <filesystem>
 
-#include "MainWindow.inc.hpp" // Workaround to supress warnings from headers
+#include <libremidi/libremidi.hpp>
+#include <libremidi/reader.hpp>
 
 #include "Window.hpp"
 #include "backend/WindowHandler.hpp"
