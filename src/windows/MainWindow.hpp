@@ -55,12 +55,14 @@ namespace MID3SMPS {
 		bool autoReloadMidi = true;
 		bool autoOptimizeMidi{};
 
-	public:
-		explicit MainWindow(WindowHandler &handler);
+		friend class Window;
 		void render_impl();
 		void render_children_impl();
 		void on_close_impl();
 		[[nodiscard]] bool keep_impl() const;
+
+	public:
+		explicit MainWindow(WindowHandler &handler);
 	};
 
 	fs::path getPathFromFileDialog();

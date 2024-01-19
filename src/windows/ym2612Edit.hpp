@@ -7,7 +7,7 @@ namespace MID3SMPS {
 	private:
 		friend class MainWindow;
 
-	public:
+		friend class Window;
 		void render_impl();
 		void render_children_impl();
 		void on_close_impl();

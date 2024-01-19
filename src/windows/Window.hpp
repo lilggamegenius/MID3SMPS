@@ -6,6 +6,10 @@ class Window {
 		return *static_cast<Derived*>(this);
 	}
 
+	[[nodiscard]] constexpr const Derived& derived() const {
+		return *static_cast<const Derived*>(this);
+	}
+
 public:
 	void render() {
 		derived().render_impl();
