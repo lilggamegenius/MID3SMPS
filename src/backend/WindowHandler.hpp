@@ -5,7 +5,9 @@
 #include <list>
 #include <memory>
 
-#include "windows/Window.hpp"
+namespace MID3SMPS {
+	class MainWindow;
+}
 
 struct FpsIdling{
 	uint_fast8_t fpsIdle = 5;         // FPS when idling_
@@ -61,7 +63,7 @@ struct FpsIdling{
 };
 
 class WindowHandler {
-	std::unique_ptr<Window> mainWindow;
+	std::unique_ptr<MID3SMPS::MainWindow> mainWindow;
 	ImGuiWrapConfig config_;
 	FpsIdling idling_;
 

@@ -12,7 +12,7 @@
 namespace fs = std::filesystem;
 
 namespace MID3SMPS {
-	class MainWindow final : public Window{
+	class MainWindow final : public Window<MainWindow>{
 		WindowHandler &windowHandler;
 		bool stayOpen = true;
 
@@ -57,10 +57,10 @@ namespace MID3SMPS {
 
 	public:
 		explicit MainWindow(WindowHandler &handler);
-		~MainWindow() override;
-		void render() override;
-		void onClose() override;
-		[[nodiscard]] bool keep() const override;
+		void render_impl();
+		void render_children_impl();
+		void on_close_impl();
+		[[nodiscard]] bool keep_impl() const;
 	};
 
 	fs::path getPathFromFileDialog();

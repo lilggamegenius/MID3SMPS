@@ -35,7 +35,7 @@ namespace MID3SMPS {
 		ImGui::TextUnformatted(cache.c_str());
 	}
 
-	void MainWindow::render(){
+	void MainWindow::render_impl(){
 		{
 			const dear::Begin mainWindow("Mid3SMPS", &stayOpen, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 			if(!mainWindow){ return; }
@@ -85,6 +85,10 @@ namespace MID3SMPS {
 			};
 		}
 
+		render_children_impl();
+	}
+
+	void MainWindow::render_children_impl() {
 		renderFileDialogs();
 	}
 
@@ -231,17 +235,15 @@ namespace MID3SMPS {
 
 	}
 
-	void MainWindow::onClose(){
+	void MainWindow::on_close_impl(){
 
 	}
 
-	bool MainWindow::keep() const{
+	bool MainWindow::keep_impl() const{
 		return stayOpen;
 	}
 
 	MainWindow::MainWindow(WindowHandler &handler) : windowHandler(handler){
 
 	}
-
-	MainWindow::~MainWindow() = default;
 } // MID3SMPS

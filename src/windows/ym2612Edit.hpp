@@ -3,18 +3,15 @@
 #include "MainWindow.hpp"
 
 namespace MID3SMPS {
-	class YM2612Edit : public Window{
+	class YM2612Edit : public Window<YM2612Edit>{
 	private:
 		friend class MainWindow;
 
 	public:
-		void render() override;
-
-		void renderChildren() override;
-
-		void onClose() override;
-
-		[[nodiscard]] bool keep() const override;
+		void render_impl();
+		void render_children_impl();
+		void on_close_impl();
+		[[nodiscard]] bool keep_impl() const;
 
 	};
 } // MID3SMPS

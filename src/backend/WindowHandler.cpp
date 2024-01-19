@@ -20,18 +20,18 @@ ImGuiWrapperReturnType WindowHandler::MainLoopStep(){
 	}
 #endif
 	mainWindow->render();
-	mainWindow->renderChildren();
+	mainWindow->render_children();
 	if(mainWindow->keep()){
 		return std::nullopt;
 	}
-	mainWindow->onClose();
+	mainWindow->on_close();
 	return 0;
 }
 
 // Init code
 WindowHandler::WindowHandler(){
 	config_.enableVsync_ = true;
-	config_.windowTitle_ = "Mid3SMPS";
+	config_.windowTitle_ = "MID3SMPS";
 	config_.enableDocking_ = true;
 	config_.enableViewport_ = true;
 	config_.enableViewportAutoMerge_ = false;
@@ -62,7 +62,7 @@ void WindowHandler::IdleBySleeping(){
 		glfwWaitEventsTimeout(waitTimeout);
 
 		const auto afterWait    = system_clock::now();
-		const auto waitDuration = (afterWait - beforeWait);
+		const auto waitDuration = afterWait - beforeWait;
 		const milliseconds waitIdleExpected(1000 / idling_.fpsIdle);
 		idling_.isIdling = (waitDuration > waitIdleExpected * 0.9);
 	}
