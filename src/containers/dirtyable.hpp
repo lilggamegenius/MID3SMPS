@@ -37,7 +37,7 @@ public:
 	}
 
 	constexpr T& operator *(){
-		if(autoDirty){
+		if constexpr (autoDirty){
 			isDirty = true;
 		}
 		return *data;
@@ -48,7 +48,7 @@ public:
 	}
 
 	constexpr T* operator->(){
-		if(autoDirty){
+		if constexpr(autoDirty){
 			isDirty = true;
 		}
 		return data.operator->();
@@ -94,5 +94,13 @@ public:
 
 	constexpr auto operator <=>(const dirtyable &otherData) const {
 		return *data <=> *otherData;
+	}
+
+	constexpr operator bool() const noexcept {
+		return data.operator bool();
+	}
+
+	constexpr auto has_value() const noexcept {
+		return data.has_value();
 	}
 };

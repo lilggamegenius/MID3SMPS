@@ -21,9 +21,9 @@ namespace MID3SMPS {
 	template<typename T>
 	void CachedRightText(dirtyable<T> &variable, std::string &cache, const std::string &emptyText){
 		if(variable.dirty()){
-			if(variable->empty()){
+			if(!variable.has_value() || variable->empty()){
 				cache = emptyText;
-			} else{
+			} else {
 				cache = variable->string();
 			}
 			variable.clearDirty();

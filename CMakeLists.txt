@@ -51,6 +51,14 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
 	)
 	if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 		set(WARNING_FLAGS ${WARNING_FLAGS}
+				#-fhardened
+				-D_FORTIFY_SOURCE=3
+				-D_GLIBCXX_ASSERTIONS
+				-ftrivial-auto-var-init=zero
+				-fPIE  -pie  -Wl,-z,relro,-z,now-
+				-fstack-protector-strong
+				-fstack-clash-protection
+
 				-Wlogical-op    # Warn when a logical operator is suspiciously always evaluating to true or false.
 				-Wnoexcept  # Warn when a noexcept expression evaluates to false even though the expression can't actually throw.
 				-Wstrict-null-sentinel  # Warn about un-casted NULL used as sentinel.

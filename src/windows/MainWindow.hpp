@@ -16,13 +16,13 @@ namespace MID3SMPS {
 		WindowHandler &windowHandler;
 		bool stayOpen = true;
 
-		dirtyable<fs::path> midiPath{};
-		dirtyable<fs::path> lastSmpsPath{};
+		dirtyable<fs::path> midiPath{fs::path()};
+		dirtyable<fs::path> lastSmpsPath{fs::path()};
 
 		libremidi::reader reader{};
 		libremidi::reader::parse_result parseResult{};
 
-		dirtyable<fs::path> mappingPath{};
+		dirtyable<fs::path> mappingPath{fs::path()};
 
 		int ticksPerQuarter = 0;
 		int ticksMultiplier = 0;
