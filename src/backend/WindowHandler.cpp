@@ -1,12 +1,29 @@
 #include "backend/WindowHandler.hpp"
 #include "windows/MainWindow.hpp"
-#include "GLFW/glfw3.h"
-#include <imguiwrap.h>
+#include "containers/programPersistence.hpp"
 
+#include <GLFW/glfw3.h>
+#include <imguiwrap.h>
+#include <imgui_internal.h>
 
 int main(){
 	auto handler = std::make_unique<WindowHandler>();
-	return imgui_main(handler->config(), [&handler]{ return handler->MainLoopStep(); });
+	return imgui_main(
+		handler->config(),
+		[&handler]{ return handler->MainLoopStep(); },
+		[&handler]{handler->MainLoopInit();}
+		);
+}
+
+void WindowHandler::MainLoopInit() {
+	// Add .ini handle for UserData type
+	ImGuiSettingsHandler ini_handler;
+	ini_handler.TypeName   = MID3SMPS::ProgramPersistence::TypeName;
+	ini_handler.TypeHash   = ImHashStr(MID3SMPS::ProgramPersistence::TypeName);
+	ini_handler.ReadOpenFn = MID3SMPS::ProgramPersistence::ReadOpen;
+	ini_handler.ReadLineFn = MID3SMPS::ProgramPersistence::ReadLine;
+	ini_handler.WriteAllFn = MID3SMPS::ProgramPersistence::WriteAll;
+	ImGui::GetCurrentContext()->SettingsHandlers.push_back(ini_handler);
 }
 
 ImGuiWrapperReturnType WindowHandler::MainLoopStep(){

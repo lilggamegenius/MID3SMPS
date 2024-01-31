@@ -81,17 +81,11 @@ endif()
 add_executable(MID3SMPS
 		src/backend/WindowHandler.cpp src/windows/MainWindow.cpp src/windows/MainWindow.hpp
 		src/windows/ym2612Edit.cpp src/windows/ym2612Edit.hpp
+		src/containers/programPersistence.cpp
+		src/containers/programPersistence.hpp
 )
 
 target_include_directories(MID3SMPS SYSTEM PRIVATE lib/ImGuiFileDialog)
-#target_include_directories(MID3SMPS SYSTEM PRIVATE lib/imguiwrap/vendor/imgui/src)
-
-get_property(_imguiwrap_include_dirs TARGET imguiwrap PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
-set_property(TARGET imguiwrap PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_imguiwrap_include_dirs}")
-#target_include_directories(MID3SMPS SYSTEM PRIVATE lib/libremidi/include/libremidi)
-
-get_property(_libremidi_include_dirs TARGET libremidi PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
-set_property(TARGET libremidi PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_libremidi_include_dirs}")
 
 target_include_directories(MID3SMPS PRIVATE src)
 target_compile_options(MID3SMPS PUBLIC ${WARNING_FLAGS})

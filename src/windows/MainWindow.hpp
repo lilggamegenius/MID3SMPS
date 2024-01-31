@@ -53,13 +53,17 @@ namespace MID3SMPS {
 		bool convertSongTitle{};
 		bool perFileInstruments{};
 		bool autoReloadMidi = true;
-		bool autoOptimizeMidi{};
+		bool autoOptimizeMidi = true;
+
+		bool chorusCCVolumeBoost = true;
+		bool panLawCompensation = true;
 
 		friend class Window;
 		void render_impl();
 		void render_children_impl();
 		void on_close_impl();
 		[[nodiscard]] bool keep_impl() const;
+		[[nodiscard]] static const char* window_title_impl() ;
 
 	public:
 		explicit MainWindow(WindowHandler &handler);

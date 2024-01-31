@@ -73,6 +73,7 @@ public:
 	[[nodiscard]] FpsIdling& idling() noexcept;
 
 	WindowHandler();
+	static void MainLoopInit();
 	ImGuiWrapperReturnType MainLoopStep();
 
 	void IdleBySleeping();

@@ -27,6 +27,10 @@ public:
 		return derived().keep_impl();
 	}
 
+	[[nodiscard]] constexpr const char* window_title() const{
+		return derived().window_title_impl();
+	}
+
 protected:
 	Window() = default;
 	Window(const Window&) = default;
