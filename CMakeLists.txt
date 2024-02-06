@@ -1,15 +1,19 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 project(MID3SMPS)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(CMAKE_UNITY_BUILD TRUE)
+
 find_package(fmt CONFIG REQUIRED)
 find_package(gcem CONFIG REQUIRED)
 #find_package(libremidi CONFIG REQUIRED)
 add_subdirectory(lib/libremidi)
 add_subdirectory(lib/imguiwrap)
+
+set_target_properties(imgui PROPERTIES UNITY_BUILD OFF)
 
 add_library(ImGuiFileDialog lib/ImGuiFileDialog/ImGuiFileDialog.cpp)
 target_include_directories(ImGuiFileDialog SYSTEM PRIVATE lib/imguiwrap/vendor/imgui/src)
@@ -81,8 +85,7 @@ endif()
 add_executable(MID3SMPS
 		src/backend/WindowHandler.cpp src/windows/MainWindow.cpp src/windows/MainWindow.hpp
 		src/windows/ym2612Edit.cpp src/windows/ym2612Edit.hpp
-		src/containers/programPersistence.cpp
-		src/containers/programPersistence.hpp
+		src/containers/programPersistence.cpp src/containers/programPersistence.hpp
 )
 
 target_include_directories(MID3SMPS SYSTEM PRIVATE lib/ImGuiFileDialog)
