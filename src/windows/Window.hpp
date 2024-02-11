@@ -1,7 +1,7 @@
 #pragma once
 
 template<typename Derived>
-class Window {
+class window {
 	[[nodiscard]] constexpr Derived& derived() {
 		return *static_cast<Derived*>(this);
 	}
@@ -32,7 +32,7 @@ public:
 	}
 
 protected:
-	Window() = default;
-	Window(const Window&) = default;
-	Window(Window&&) = default;
+	window() = default;
+	window(const window&) = default;
+	window(window&&) = default;
 };

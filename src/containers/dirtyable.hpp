@@ -12,7 +12,7 @@ public:
 	constexpr dirtyable() = default;
 
 	constexpr explicit dirtyable(T&& newData){
-		data = newData;
+		data = std::move(newData);
 	}
 
 	template<typename ...Args>
@@ -62,7 +62,7 @@ public:
 		if(data != newData){
 			isDirty = true;
 		}
-		data = std::make_optional<T>(newData);
+		data = std::make_optional<T>(std::move(newData));
 		return *this;
 	}
 

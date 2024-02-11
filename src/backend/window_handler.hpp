@@ -6,7 +6,7 @@
 #include <memory>
 
 namespace MID3SMPS {
-	class MainWindow;
+	class main_window;
 }
 
 struct FpsIdling{
@@ -62,8 +62,8 @@ struct FpsIdling{
 	}
 };
 
-class WindowHandler {
-	std::unique_ptr<MID3SMPS::MainWindow> mainWindow;
+class window_handler {
+	std::unique_ptr<MID3SMPS::main_window> mainWindow;
 	ImGuiWrapConfig config_;
 	FpsIdling idling_;
 
@@ -72,7 +72,7 @@ public:
 	[[nodiscard]] const ImGuiWrapConfig& config() const noexcept;
 	[[nodiscard]] FpsIdling& idling() noexcept;
 
-	WindowHandler();
+	window_handler();
 	static void MainLoopInit();
 	ImGuiWrapperReturnType MainLoopStep();
 

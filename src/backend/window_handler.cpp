@@ -1,32 +1,23 @@
-#include "backend/WindowHandler.hpp"
-#include "windows/MainWindow.hpp"
-#include "containers/programPersistence.hpp"
+#include "backend/window_handler.hpp"
+#include "windows/main_window.hpp"
+#include "containers/program_persistence.hpp"
 
 #include <GLFW/glfw3.h>
 #include <imguiwrap.h>
 #include <imgui_internal.h>
 
-int main(){
-	auto handler = std::make_unique<WindowHandler>();
-	return imgui_main(
-		handler->config(),
-		[&handler]{ return handler->MainLoopStep(); },
-		[&handler]{handler->MainLoopInit();}
-		);
-}
-
-void WindowHandler::MainLoopInit() {
+void window_handler::MainLoopInit() {
 	// Add .ini handle for UserData type
 	ImGuiSettingsHandler ini_handler;
-	ini_handler.TypeName   = MID3SMPS::ProgramPersistence::TypeName;
-	ini_handler.TypeHash   = ImHashStr(MID3SMPS::ProgramPersistence::TypeName);
-	ini_handler.ReadOpenFn = MID3SMPS::ProgramPersistence::ReadOpen;
-	ini_handler.ReadLineFn = MID3SMPS::ProgramPersistence::ReadLine;
-	ini_handler.WriteAllFn = MID3SMPS::ProgramPersistence::WriteAll;
+	ini_handler.TypeName   = MID3SMPS::program_persistence::TypeName;
+	ini_handler.TypeHash   = ImHashStr(MID3SMPS::program_persistence::TypeName);
+	ini_handler.ReadOpenFn = MID3SMPS::program_persistence::read_open;
+	ini_handler.ReadLineFn = MID3SMPS::program_persistence::read_line;
+	ini_handler.WriteAllFn = MID3SMPS::program_persistence::write_all;
 	ImGui::GetCurrentContext()->SettingsHandlers.push_back(ini_handler);
 }
 
-ImGuiWrapperReturnType WindowHandler::MainLoopStep(){
+ImGuiWrapperReturnType window_handler::MainLoopStep(){
 	IdleBySleeping();
 #ifdef DEBUG
 	static bool show_demo_window = true;
@@ -46,7 +37,7 @@ ImGuiWrapperReturnType WindowHandler::MainLoopStep(){
 }
 
 // Init code
-WindowHandler::WindowHandler(){
+window_handler::window_handler(){
 	config_.enableVsync_ = true;
 	config_.windowTitle_ = "MID3SMPS";
 	config_.enableDocking_ = true;
@@ -54,10 +45,10 @@ WindowHandler::WindowHandler(){
 	config_.enableViewportAutoMerge_ = false;
 	config_.hideMainWindow_ = true;
 
-	mainWindow = std::make_unique<MID3SMPS::MainWindow>(*this);
+	mainWindow = std::make_unique<MID3SMPS::main_window>(*this);
 }
 
-void WindowHandler::IdleBySleeping(){
+void window_handler::IdleBySleeping(){
 	constexpr uint_fast8_t framesToWait = 2;
 	static uint_fast8_t framesBeforeIdle = framesToWait;
 	idling_.isIdling = false;
@@ -85,11 +76,11 @@ void WindowHandler::IdleBySleeping(){
 	}
 }
 
-const ImGuiWrapConfig &WindowHandler::config() const noexcept{
+const ImGuiWrapConfig &window_handler::config() const noexcept{
 	return config_;
 }
 
-FpsIdling& WindowHandler::idling() noexcept{
+FpsIdling& window_handler::idling() noexcept{
 	return idling_;
 }
 

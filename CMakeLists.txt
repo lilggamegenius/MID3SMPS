@@ -82,19 +82,32 @@ if(${FORCE_COLORED_OUTPUT})
 	endif()
 endif()
 
-add_executable(MID3SMPS
-		src/backend/WindowHandler.cpp src/windows/MainWindow.cpp src/windows/MainWindow.hpp
-		src/windows/ym2612Edit.cpp src/windows/ym2612Edit.hpp
-		src/containers/programPersistence.cpp src/containers/programPersistence.hpp
+add_library(MID3SMPS STATIC
+		src/backend/window_handler.cpp src/windows/main_window.cpp src/windows/main_window.hpp
+		src/windows/ym2612_edit.cpp src/windows/ym2612_edit.hpp
+		src/containers/program_persistence.cpp src/containers/program_persistence.hpp
+		src/containers/files/mapping.cpp src/containers/files/mapping.hpp
+		src/containers/files/formatException.hpp
+		src/containers/files/gyb.cpp src/containers/files/gyb.hpp
+		src/containers/files/fm/patch.cpp src/containers/files/FM/patch.hpp
+		src/containers/files/fm/operators.hpp
 )
 
 target_include_directories(MID3SMPS SYSTEM PRIVATE lib/ImGuiFileDialog)
 
-target_include_directories(MID3SMPS PRIVATE src)
+target_include_directories(MID3SMPS PUBLIC src)
 target_compile_options(MID3SMPS PUBLIC ${WARNING_FLAGS})
 target_link_libraries(MID3SMPS imguiwrap ImGuiFileDialog fmt::fmt-header-only libremidi gcem)
 target_compile_definitions(MID3SMPS
-		PRIVATE
+		PUBLIC
 		# If the debug configuration pass the DEBUG define to the compiler
 		$<$<CONFIG:Debug>:DEBUG>
 )
+
+add_executable(MID3SMPS_EXECUTABLE
+		src/entry.cpp
+)
+
+target_link_libraries(MID3SMPS_EXECUTABLE MID3SMPS)
+
+add_subdirectory(test)

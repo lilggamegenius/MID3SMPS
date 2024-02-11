@@ -8,26 +8,26 @@
 namespace MID3SMPS {
 	namespace fs = std::filesystem;
 
-	class ProgramPersistence {
-		friend class MainWindow;
+	class program_persistence {
+		friend class main_window;
 		enum Mode{
-			None,
-			Data,
-			OpenHistory
-		} mode = None;
+			none,
+			data,
+			open_history
+		} mode = none;
 
 		fs::path last_config_;
 		std::vector<std::unique_ptr<fs::path>> recent_midis_;
 
 	public:
-		static constexpr auto TypeName = "ProgramPersistence";
+		static constexpr auto TypeName = "MID3SMPS";
 
-		static void WriteAll(ImGuiContext*, ImGuiSettingsHandler*, ImGuiTextBuffer* out_buf) noexcept;
-		static void* ReadOpen(ImGuiContext*, ImGuiSettingsHandler*, const char* name) noexcept;
-		static void ReadLine(ImGuiContext*, ImGuiSettingsHandler*, void* entry, const char* line) noexcept;
+		static void write_all(ImGuiContext*, ImGuiSettingsHandler*, ImGuiTextBuffer* out_buf) noexcept;
+		static void* read_open(ImGuiContext*, ImGuiSettingsHandler*, const char* name) noexcept;
+		static void read_line(ImGuiContext*, ImGuiSettingsHandler*, void* entry, const char* line) noexcept;
 
-		static void ReadData(std::ispanstream &input);
-		static void ReadRecents(std::ispanstream &input);
+		static void read_data(std::ispanstream &input);
+		static void read_recents(std::ispanstream &input);
 
 		[[nodiscard]] constexpr auto& last_config() const noexcept{
 			return last_config_;
@@ -49,16 +49,16 @@ namespace MID3SMPS {
 
 	private:
 		static constexpr Mode mode_from_string(const std::string_view view) noexcept{
-			if(view == "Data") return Data;
-			if(view == "OpenHistory") return OpenHistory;
-			return None;
+			if(view == "Data") { return data; }
+			if(view == "OpenHistory") { return open_history; }
+			return none;
 		}
 
 		static constexpr std::string_view string(const Mode mode) noexcept{
 			switch(mode) {
-				case Data:
+				case data:
 					return "Data";
-				case OpenHistory:
+				case open_history:
 					return "OpenHistory";
 				default:
 					return "None";
@@ -66,10 +66,10 @@ namespace MID3SMPS {
 		}
 
 		[[nodiscard]] constexpr bool empty() const noexcept {
-			if(!last_config_.empty()) return false;
+			if(!last_config_.empty()) { return false; }
 			return true;
 		}
 	};
 
-	inline auto persistence = std::make_unique<ProgramPersistence>();
+	inline auto persistence = std::make_unique<program_persistence>();
 } // MID3SMPS
