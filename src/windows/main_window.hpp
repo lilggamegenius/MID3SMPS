@@ -8,6 +8,7 @@
 #include "window.hpp"
 #include "backend/window_handler.hpp"
 #include "containers/dirtyable.hpp"
+#include "ym2612_edit.hpp"
 
 namespace fs = std::filesystem;
 
@@ -23,6 +24,8 @@ namespace MID3SMPS {
 		libremidi::reader::parse_result parse_result_{};
 
 		dirtyable<fs::path> mapping_path_{fs::path()};
+
+		std::unique_ptr<ym2612_edit> ym2612_edit_ = nullptr;
 
 		int ticks_per_quarter_ = 0;
 		int ticks_multiplier_ = 0;

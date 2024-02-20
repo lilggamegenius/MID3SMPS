@@ -51,8 +51,8 @@ namespace MID3SMPS {
 	}
 
 	void main_window::render_impl() {
-		static bool first_frame = false;
-		if(!first_frame) [[unlikely]] {
+		static bool first_frame_completed = false;
+		if(!first_frame_completed) [[unlikely]] {
 			if(!persistence->empty()) {
 				fs::path map(persistence->last_config_);
 				open_mapping(std::move(map), false);
@@ -122,13 +122,7 @@ namespace MID3SMPS {
 			};
 		};
 
-		first_frame = true;
-
-		render_children_impl();
-	}
-
-	void main_window::render_children_impl() {
-		render_file_dialogs();
+		first_frame_completed = true;
 	}
 
 	void main_window::show_menu_bar() {
@@ -317,13 +311,28 @@ namespace MID3SMPS {
 
 	void main_window::save_mapping_menu() {}
 
-	void main_window::open_instrument_editor() {}
+	void main_window::open_instrument_editor() {
+		if(!ym2612_edit_) {
+			const auto idle = window_handler_.idling().getOverride(); // override idle while loading, for speed
+			ym2612_edit_ = std::make_unique<ym2612_edit>();
+		} else {
+			ImGui::SetWindowFocus(ym2612_edit_->window_title());
+		}
+		ym2612_edit_->open_ = true;
+	}
 
 	void main_window::open_mappings_editor() {}
 
 	void main_window::open_tempo_calculator() {}
 
 	void main_window::on_close_impl() {}
+
+	void main_window::render_children_impl() {
+		render_file_dialogs();
+		if(ym2612_edit_ && ym2612_edit_->keep()) {
+			ym2612_edit_->render();
+		}
+	}
 
 	bool main_window::keep_impl() const {
 		return stay_open_;

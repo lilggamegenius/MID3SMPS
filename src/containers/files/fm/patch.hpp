@@ -16,12 +16,11 @@ namespace MID3SMPS::fm {
 	};
 
 	struct patch {
-	private:
-		std::string name_{};
-		std::uint16_t total_size_{};
-		operators operators_{};
-		std::int8_t instrument_transposition_{};
-		options options_{};
-		chords chord_notes_{};
+		std::string name{};
+		std::uint16_t total_size{};
+		operators operators{};
+		std::int8_t instrument_transposition{};
+		options options{};
+		chords chord_notes{};
 	};
 }
