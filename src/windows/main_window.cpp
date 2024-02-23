@@ -126,6 +126,7 @@ namespace MID3SMPS {
 	}
 
 	void main_window::show_menu_bar() {
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {8, 0});
 		ImGui::PushItemWidth(ImGui::GetFontSize() * -12);
 		dear::MenuBar() && [this] {
 			dear::Menu("File") && [this] {
@@ -185,19 +186,21 @@ namespace MID3SMPS {
 				ImGui::Checkbox("Auto optimize MIDI", &auto_optimize_midi_);
 				ImGui::Checkbox("Chorus CC volume boost", &chorus_cc_volume_boost_);
 				ImGui::Checkbox("Pan law compensation", &pan_law_compensation_);
-				#if DEBUG
-				ImGui::Separator();
-				static bool override;
-				ImGui::Checkbox("Override Idle", &override);
-				static FpsIdling::Override idleOverride;
-				if(override && !idleOverride) {
-					idleOverride = window_handler_.idling().getOverride();
-				} else if(!override && idleOverride) {
-					idleOverride = {};
+				if constexpr (debug_mode) {
+					ImGui::Separator();
+					static bool override;
+					ImGui::Checkbox("Override Idle", &override);
+					static FpsIdling::Override idleOverride;
+					if(override && !idleOverride) {
+						idleOverride = handler.idling().getOverride();
+					} else if(!override && idleOverride) {
+						idleOverride = {};
+					}
 				}
-				#endif
 			};
 		};
+		ImGui::PopItemWidth();
+		ImGui::PopStyleVar();
 	}
 
 	fs::path get_path_from_file_dialog() {
@@ -313,7 +316,7 @@ namespace MID3SMPS {
 
 	void main_window::open_instrument_editor() {
 		if(!ym2612_edit_) {
-			const auto idle = window_handler_.idling().getOverride(); // override idle while loading, for speed
+			const auto idle = handler.idling().getOverride(); // override idle while loading, for speed
 			ym2612_edit_ = std::make_unique<ym2612_edit>();
 		} else {
 			ImGui::SetWindowFocus(ym2612_edit_->window_title());
@@ -337,6 +340,4 @@ namespace MID3SMPS {
 	bool main_window::keep_impl() const {
 		return stay_open_;
 	}
-
-	main_window::main_window(window_handler &handler) : window_handler_(handler) {}
 } // MID3SMPS

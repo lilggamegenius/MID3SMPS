@@ -78,3 +78,7 @@ public:
 
 	void IdleBySleeping();
 };
+
+namespace MID3SMPS {
+	static window_handler handler;
+}

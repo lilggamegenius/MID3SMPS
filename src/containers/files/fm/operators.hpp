@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 namespace MID3SMPS::fm {
+	using namespace std::string_view_literals;
 	struct operators {
 		using register_t = std::uint8_t;
 		static constexpr register_t instrument_register_size = 0x1E;
@@ -239,7 +240,7 @@ namespace MID3SMPS::fm {
 
 		constexpr void ssgeg(const op_id &op, const ssgeg_mode mode) {
 			auto &ssgeg_reg = reg(op, 6);
-			ssgeg_reg       = std::to_underlying(mode);
+			ssgeg_reg = std::to_underlying(mode);
 		}
 
 		static constexpr std::array ams_values = {
@@ -315,90 +316,89 @@ namespace MID3SMPS::fm {
 		}
 
 		[[nodiscard, gnu::const]] static constexpr auto string(const op_id &id) {
-			//using namespace std::string_view_literals;
 			using enum op_id;
 			switch(id) {
-				case op1: return "Operator 1";
-				case op2: return "Operator 2";
-				case op3: return "Operator 3";
-				case op4: return "Operator 4";
+				case op1: return "Operator 1"sv;
+				case op2: return "Operator 2"sv;
+				case op3: return "Operator 3"sv;
+				case op4: return "Operator 4"sv;
 				default: throw std::logic_error(fmt::format("Invalid value for op_id, got {}", std::to_underlying(id)));
 			}
 		}
 
 		[[nodiscard, gnu::const]] static constexpr auto string(const detune_mode &mode) {
-			//using namespace std::string_view_literals;
+			using namespace std::string_view_literals;
 			using enum detune_mode;
 			switch(mode) {
 				case no_change_1:
-				case no_change_2: return "No Change";
-				case plus_e: return "× (1+e)";
-				case plus_2e: return "× (1+2e)";
-				case plus_3e: return "× (1+3e)";
-				case minus_e: return "× (1-e)";
-				case minus_2e: return "× (1-2e)";
-				case minus_3e: return "× (1-3e)";
+				case no_change_2: return "No Change"sv;
+				case plus_e: return "× (1+e)"sv;
+				case plus_2e: return "× (1+2e)"sv;
+				case plus_3e: return "× (1+3e)"sv;
+				case minus_e: return "× (1-e)"sv;
+				case minus_2e: return "× (1-2e)"sv;
+				case minus_3e: return "× (1-3e)"sv;
 				default: throw std::logic_error(fmt::format("Invalid value for detune_mode, got {}", std::to_underlying(mode)));
 			}
 		}
 
 		[[nodiscard, gnu::const]] static constexpr auto string(const rate_scaling_mode &mode) {
-			//using namespace std::string_view_literals;
+			using namespace std::string_view_literals;
 			using enum rate_scaling_mode;
 			switch(mode) {
-				case kc8: return "2 × Rate + (KC/8)";
-				case kc4: return "2 × Rate + (KC/4)";
-				case kc2: return "2 × Rate + (KC/2)";
-				case kc1: return "2 × Rate + (KC/1)";
+				case kc8: return "(KC/8) + (2×Rate)"sv;
+				case kc4: return "(KC/4) + (2×Rate)"sv;
+				case kc2: return "(KC/2) + (2×Rate)"sv;
+				case kc1: return "(KC/1) + (2×Rate)"sv;
 				default: throw std::logic_error(fmt::format("Invalid value for rate_scaling_mode, got {}", std::to_underlying(mode)));
 			}
 		}
 
 		[[nodiscard, gnu::const]] static constexpr auto string(const ssgeg_mode &mode) {
-			//using namespace std::string_view_literals;
+			using namespace std::string_view_literals;
 			using enum ssgeg_mode;
 			switch(mode) {
-				case disabled: return "Disabled";
-				case mode0: return R"(\\\\)";
-				case mode1: return R"(\___)";
-				case mode2: return R"(\/\/)";
-				case mode3: return R"(\‾‾‾)";
-				case mode4: return R"(////)";
-				case mode5: return R"(/‾‾‾)";
-				case mode6: return R"(/\/\)";
-				case mode7: return R"(/___)";
+				case disabled: return "Disabled"sv;
+				case mode0: return R"(\\\\)"sv;
+				case mode1: return R"(\___)"sv;
+				case mode2: return R"(\/\/)"sv;
+				case mode3: return R"(\¯¯¯)"sv;
+				case mode4: return R"(////)"sv;
+				case mode5: return R"(/¯¯¯)"sv;
+				case mode6: return R"(/\/\)"sv;
+				case mode7: return R"(/___)"sv;
 				default: throw std::logic_error(fmt::format("Invalid value for ssgeg_mode, got {}", std::to_underlying(mode)));
 			}
 		}
 
 		[[nodiscard, gnu::const]] static constexpr auto string(const feedback_mode &mode) {
-			//using namespace std::string_view_literals;
+			using namespace std::string_view_literals;
 			using enum feedback_mode;
 			switch(mode) {
-				case off: return "Off";
-				case pi_div_16: return "Pi / 16";
-				case pi_div_8: return "Pi / 8";
-				case pi_div_4: return "Pi / 4";
-				case pi_div_2: return "Pi / 2";
-				case pi: return "Pi";
-				case pi_mul_2: return "2 * Pi";
-				case pi_mul_4: return "4 * Pi";
+				case off: return "Off"sv;
+				case pi_div_16: return "Pi / 16"sv;
+				case pi_div_8: return "Pi / 8"sv;
+				case pi_div_4: return "Pi / 4"sv;
+				case pi_div_2: return "Pi / 2"sv;
+				case pi: return "Pi"sv;
+				case pi_mul_2: return "2 * Pi"sv;
+				case pi_mul_4: return "4 * Pi"sv;
 				default: throw std::logic_error(fmt::format("Invalid value for feedback_mode, got {}", std::to_underlying(mode)));
 			}
 		}
 
 		[[nodiscard, gnu::const]] static constexpr auto string(const algorithm_mode &mode) {
-			//using namespace std::string_view_literals;
+			using namespace std::string_view_literals;
 			using enum algorithm_mode;
 			switch(mode) {
-				case mode0: return "0 (Out 4)";
-				case mode1: return "1 (Out 4)";
-				case mode2: return "2 (Out 4)";
-				case mode3: return "3 (Out 4)";
-				case mode4: return "4 (Out 2-4)";
-				case mode5: return "5 (Out 2-3-4)";
-				case mode6: return "6 (Out 2-3-4)";
-				case mode7: return "7 (Out 1-2-3-4)";
+				case mode0: return "0 (Out 4)"sv;
+				case mode1: return "1 (Out 4)"sv;
+				case mode2: return "2 (Out 4)"sv;
+				case mode3: return "3 (Out 4)"sv;
+				case mode4: return "4 (Out 2-4)"sv;
+				case mode5: return "5 (Out 2-3-4)"sv;
+				case mode6: return "6 (Out 2-3-4)"sv;
+				case mode7: return "7 (Out 1-2-3-4)"sv;
 				default: throw std::logic_error(fmt::format("Invalid value for algorithm_mode, got {}", std::to_underlying(mode)));
 			}
 		}

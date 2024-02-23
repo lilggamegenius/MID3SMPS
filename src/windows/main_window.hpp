@@ -14,7 +14,6 @@ namespace fs = std::filesystem;
 
 namespace MID3SMPS {
 	class main_window : public window<main_window>{
-		window_handler &window_handler_;
 		bool stay_open_ = true;
 
 		dirtyable<fs::path> midi_path_{fs::path()};
@@ -72,15 +71,19 @@ namespace MID3SMPS {
 			return "MID3SMPS";
 		}
 
-	public:
-		explicit main_window(window_handler &handler);
-
-	private:
 		// ReSharper disable CppInconsistentNaming
 		static constexpr std::string OpenMidi = "OpenMidi";
 		static constexpr std::string SaveSmps = "SaveSmps";
 		static constexpr std::string OpenMapping = "OpenMapping";
 		// ReSharper restore CppInconsistentNaming
+
+	public:
+		static constexpr bool debug_mode =
+			#ifdef DEBUG
+				true;
+			#else
+				false;
+			#endif
 	};
 
 	fs::path get_path_from_file_dialog();

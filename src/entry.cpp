@@ -2,11 +2,10 @@
 #include "windows/main_window.hpp"
 
 int main() {
-	static window_handler handler;
 	return imgui_main(
-		handler.config(),
+		MID3SMPS::handler.config(),
 		[] {
-			return handler.MainLoopStep();
+			return MID3SMPS::handler.MainLoopStep();
 		},
 		[] {
 			window_handler::MainLoopInit();

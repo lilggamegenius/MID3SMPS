@@ -4,6 +4,7 @@
 
 #include <GLFW/glfw3.h>
 #include <imguiwrap.h>
+#include <imguiwrap.dear.h>
 #include <imgui_internal.h>
 
 void window_handler::MainLoopInit() {
@@ -15,6 +16,12 @@ void window_handler::MainLoopInit() {
 	ini_handler.ReadLineFn = MID3SMPS::program_persistence::read_line;
 	ini_handler.WriteAllFn = MID3SMPS::program_persistence::write_all;
 	ImGui::GetCurrentContext()->SettingsHandlers.push_back(ini_handler);
+
+	auto &style = ImGui::GetStyle();
+	style.ItemInnerSpacing = dear::Zero;
+	style.ItemSpacing = {0, 2};
+	style.FramePadding = {4, 1};
+	style.CellPadding = dear::Zero;
 }
 
 ImGuiWrapperReturnType window_handler::MainLoopStep(){
@@ -45,7 +52,7 @@ window_handler::window_handler(){
 	config_.enableViewportAutoMerge_ = false;
 	config_.hideMainWindow_ = true;
 
-	mainWindow = std::make_unique<MID3SMPS::main_window>(*this);
+	mainWindow = std::make_unique<MID3SMPS::main_window>();
 }
 
 void window_handler::IdleBySleeping(){
@@ -69,7 +76,7 @@ void window_handler::IdleBySleeping(){
 		// (for example glfwWaitEventsTimeout(timeout_seconds))
 		glfwWaitEventsTimeout(waitTimeout);
 
-		const auto afterWait    = system_clock::now();
+		const auto afterWait = system_clock::now();
 		const auto waitDuration = afterWait - beforeWait;
 		const milliseconds waitIdleExpected(1000 / idling_.fpsIdle);
 		idling_.isIdling = (waitDuration > waitIdleExpected * 0.9);

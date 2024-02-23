@@ -2,16 +2,28 @@
 
 #include "containers/files/gyb.hpp"
 #include "containers/files/fm/operators.hpp"
+#include <string_view>
 
 namespace MID3SMPS {
+	using namespace std::string_view_literals;
 	class ym2612_edit : public window<ym2612_edit>{
+		static constexpr std::array num_formats = {
+			"%i"sv,
+			"%X"sv
+		};
 		friend class main_window;
-	private:
 		enum class editor_mode : std::uint8_t {
 			digital,
 			analog
-		} mode_;
+		} mode_{};
 		bool open_ = false;
+		bool hex_format = false;
+		[[nodiscard]] constexpr auto num_format() const {
+			if(hex_format) {
+				return num_formats[1];
+			}
+			return num_formats[0];
+		}
 
 		gyb gyb_{};
 
@@ -39,6 +51,7 @@ namespace MID3SMPS {
 		void render_feedback(fm::operators &op);
 		void render_algorithm(fm::operators &op);
 		void render_transposition(fm::operators &op);
+		void render_registers(/*const*/ fm::operators &op, std::uint_fast8_t current_row) const;
 
 		enum class scroll_wheel_direction {
 			positive,
