@@ -73,23 +73,25 @@ namespace MID3SMPS {
 	}
 
 	void ym2612_edit::render_impl() {
-		dear::Begin(window_title(), &open_, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse) && [this] {
+		dear::Begin{window_title_impl(), &open_, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse} && [this] {
+			//const auto dock_node = ImGui::GetWindowDockNode();
 			render_menu_bar();
 			render_patch_selection();
-			dear::TabBar("Editor tabs") && [this] {
-				dear::TabItem("Digital") && [this] {
+			dear::TabBar{"Editor tabs"} && [this] {
+				dear::TabItem{"Digital"} && [this] {
 					render_editor_digital();
 				};
-				dear::TabItem("Analog") && [this] {
+				dear::TabItem{"Analog"} && [this] {
 					render_editor_analog();
 				};
 			};
+			scale_window();
 		};
 	}
 
 	void ym2612_edit::render_menu_bar() {
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {8, 0});
-		dear::MenuBar() && [this] {
+		dear::MenuBar{} && [this] {
 			if(ImGui::MenuItem("Open new bank")) {}
 			if(ImGui::MenuItem("Save bank")) {}
 			if(ImGui::MenuItem("Bank switch")) {}
@@ -100,27 +102,23 @@ namespace MID3SMPS {
 	}
 
 	ImVec2 ym2612_edit::calculate_child_size() {
-		const auto win_size = ImGui::GetWindowSize();
-		const auto &padding = ImGui::GetStyle().WindowPadding;
+		const auto win_size = ImGui::GetContentRegionAvail();
 		ImVec2 child_size(win_size);
-		child_size.x -= padding.x * 2;
 		child_size.y *= .45;
 		return child_size;
 	}
 
 	void ym2612_edit::render_patch_selection() {
-		const auto &padding = ImGui::GetStyle().WindowPadding;
-		auto child_size = calculate_child_size();
-		child_size.y -= padding.y;
-		dear::Child("Patch Info", child_size) && [this] {
+		const auto child_size = calculate_child_size();
+		dear::Child{"Patch Info", child_size, ImGuiChildFlags_Border|ImGuiChildFlags_ResizeY} && [this] {
 			ImGui::TextUnformatted("Placeholder space");
 		};
 	}
 
 	void ym2612_edit::render_editor_digital() {
 		static constexpr auto table_flags = ImGuiTableFlags_Borders;
-		auto child_size = calculate_child_size();
-		child_size.y = -1;
+		auto child_size = ImGui::GetContentRegionAvail();
+		child_size.y = 0;
 		child_size.x *= 5.f / 7.f;
 		static fm::patch test{
 			.name = "Test patch",
@@ -137,7 +135,7 @@ namespace MID3SMPS {
 				}
 			}
 		};
-		dear::Table("Patch Editor Table 1", 5, table_flags, child_size) && [this] {
+		dear::Table{"Patch Editor Table 1", 5, table_flags, child_size} && [this] {
 			static constexpr auto row_count = 12;
 			ImGui::BeginDisabled(false);
 			//const auto availible_space = ImGui::GetContentRegionAvail();
@@ -149,15 +147,7 @@ namespace MID3SMPS {
 					case 0: {
 						ImGui::TableNextColumn();
 						render_lfo();
-						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
-							ImGui::TableNextColumn();
-							const auto str = fm::operators::string(op_id);
-							auto iter = str.cbegin();
-							if(ImGui::GetWindowWidth() < 600.f) {
-								std::advance(iter, 9); // Only show the operator number if window is too small
-							}
-							ImGui::TextUnformatted(iter, str.cend());
-						}
+						render_operator_headers();
 						break;
 					}
 					case 1: {
@@ -265,7 +255,7 @@ namespace MID3SMPS {
 			ImGui::EndDisabled();
 		};
 		ImGui::SameLine();
-		dear::Table("Patch Editor Table 2", 2, table_flags) && [this] {
+		dear::Table{"Patch Editor Table 2", 2, table_flags} && [this] {
 			static constexpr auto row_count = 12;
 			for(std::uint_fast8_t row = 0; row < row_count; row++) {
 				switch(row) {
@@ -324,13 +314,38 @@ namespace MID3SMPS {
 		};
 	}
 
+	void ym2612_edit::scale_window() {
+		const auto cursor_y = ImGui::GetCursorPosY();
+		const auto window_height = ImGui::GetWindowHeight();
+		last_space_remaining = window_height-cursor_y;
+		auto *current_window = ImGui::GetCurrentWindow();
+		auto &window_scale = current_window->FontWindowScale;
+		static constexpr float free_space_range = 17.f;
+		static constexpr float scale_diff = 0.04f;
+		static std::optional<FpsIdling::override> override = std::nullopt;
+		if(last_space_remaining > free_space_range) {
+			window_scale += scale_diff;
+		} else if(last_space_remaining < 0) {
+			window_scale -= scale_diff;
+		} else {
+			override = std::nullopt;
+			return;
+		}
+		override = handler.idling().get_override(); // Set the override temporarily so the screen can scale
+		//ImGui::DebugLog("Cursor Y: %f WindowHeight: %f Available space: %f\n", cursor_y, window_height, last_space_remaining);
+	}
+
+
 	void ym2612_edit::render_editor_analog() {
 		ImGui::TextUnformatted("Not done yet, go away");
 	}
 
 	void ym2612_edit::render_lfo() {
-		ImGui::TextUnformatted("LFO");
 		ImGui::TextUnformatted("LFO  ");
+		bool hovered = false;
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
+			hovered = true;
+		}
 		ImGui::SameLine();
 		static constexpr std::array strings = {
 			"Off"sv,
@@ -345,20 +360,41 @@ namespace MID3SMPS {
 		};
 		auto &val = gyb_.default_LFO_speed;
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo("##LFO Value", strings[val].data()) && [this, &val] {
+		dear::Combo{"##LFO Value", strings[val].data()} && [this, &val] {
 			for (std::size_t i = 0; i < gyb::lfo_values.size(); i++){
 				const bool is_selected = gyb_.default_LFO_speed == i;
 				if (ImGui::Selectable(strings[i].data(), is_selected)) {
 					val = static_cast<std::uint8_t>(i);
 				}
 
-				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-				if (is_selected)
+				if (is_selected) {
 					ImGui::SetItemDefaultFocus();
+				}
 			}
+		};
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
+			hovered = true;
+		}
+		dear::Tooltip{hovered} && [] {
+			ImGui::TextUnformatted("Used to enable FMS and AMS to work for some simple vibrato and tremolo-like effects.");
 		};
 		if(const auto new_val = handle_combo_scroll<strings.size()>(val)) {
 			val = *new_val;
+		}
+	}
+
+	void ym2612_edit::render_operator_headers() {
+		for(const auto &op_id : fm::list<fm::operators::op_id>()) {
+			ImGui::TableNextColumn();
+			const auto str = fm::operators::string(op_id);
+			auto iter = str.cbegin();
+			if(ImGui::GetWindowWidth() < 600.f) { // Todo: Make this relative to available space
+				std::advance(iter, 9); // Only show the operator number if window is too small
+			}
+			ImGui::TextUnformatted(iter, str.cend());
+			dear::ItemTooltip{} && [&str] {
+				ImGui::Text("Imagine an envelope preview here for %s", str.data());
+			};
 		}
 	}
 
@@ -367,14 +403,13 @@ namespace MID3SMPS {
 		ImGui::PushID(&op_id);
 		ImGui::SetNextItemWidth(-1);
 		const auto val = op.detune(op_id);
-		dear::Combo("##detune", oper::string(val).data()) && [this, &op, &op_id, &val] {
+		dear::Combo{"##detune", oper::string(val).data()} && [this, &op, &op_id, &val] {
 			for (const auto &current : fm::list<oper::detune_mode>()){
 				const bool is_selected = val == current;
 				if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
 					op.detune(op_id, current);
 				}
 
-				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
 				if (is_selected) {
 					ImGui::SetItemDefaultFocus();
 				}
@@ -416,14 +451,13 @@ namespace MID3SMPS {
 		const auto val = op.rate_scaling(op_id);
 		ImGui::PushID(&op_id);
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo("##rate_scaling",  oper::string(val).data()) && [this, &op, &op_id, &val] {
+		dear::Combo{"##rate_scaling",  oper::string(val).data()} && [this, &op, &op_id, &val] {
 			for (const auto &current : fm::list<oper::rate_scaling_mode>()){
 				const bool is_selected = val == current;
 				if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
 					op.rate_scaling(op_id, current);
 				}
 
-				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
 				if (is_selected) {
 					ImGui::SetItemDefaultFocus();
 				}
@@ -455,7 +489,7 @@ namespace MID3SMPS {
 		const auto val = op.amplitude_modulation(op_id);
 		ImGui::PushID(&op_id);
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo("##amplitude_modulation", val ? values[1] : values[0]) && [this, &op, &op_id, &val] {
+		dear::Combo{"##amplitude_modulation", val ? values[1] : values[0]} && [this, &op, &op_id, &val] {
 			for (const auto &current : values){
 				const bool current_bool = current == values[1];
 				const bool is_selected = val == current_bool;
@@ -463,7 +497,6 @@ namespace MID3SMPS {
 					op.amplitude_modulation(op_id, current_bool);
 				}
 
-				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
 				if (is_selected) {
 					ImGui::SetItemDefaultFocus();
 				}
@@ -471,7 +504,7 @@ namespace MID3SMPS {
 		};
 		using enum scroll_wheel_direction;
 		if(const auto new_val = handle_scroll(); new_val != neutral) {
-			op.amplitude_modulation(op_id, new_val == positive );
+			op.amplitude_modulation(op_id, !val);
 		}
 		ImGui::PopID();
 	}
@@ -532,14 +565,13 @@ namespace MID3SMPS {
 		const auto val = op.ssgeg(op_id);
 		ImGui::PushID(&op_id);
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo("##ssgeg", oper::string(val).data()) && [this, &op, &op_id, &val] {
+		dear::Combo{"##ssgeg", oper::string(val).data()} && [this, &op, &op_id, &val] {
 			for (const auto &current : fm::list<oper::ssgeg_mode>()){
 				const bool is_selected = val == current;
 				if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
 					op.ssgeg(op_id, current);
 				}
 
-				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
 				if (is_selected) {
 					ImGui::SetItemDefaultFocus();
 				}
@@ -553,6 +585,10 @@ namespace MID3SMPS {
 
 	void ym2612_edit::render_ams(fm::operators &op) {
 		ImGui::TextUnformatted("AMS  ");
+		bool hovered = false;
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
+			hovered = true;
+		}
 		ImGui::SameLine();
 		using oper = fm::operators;
 		static constexpr std::array strings = {
@@ -563,17 +599,23 @@ namespace MID3SMPS {
 		};
 		const auto val = op.ams();
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo("##AMS value", strings[val].data()) && [this, &op] {
+		dear::Combo{"##AMS value", strings[val].data()} && [this, &op] {
 			for (std::size_t i = 0; i < oper::ams_values.size(); i++){
 				const bool is_selected = op.ams() == i;
 				if (ImGui::Selectable(strings[i].data(), is_selected)) {
 					op.ams(static_cast<std::uint8_t>(i));
 				}
 
-				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-				if (is_selected)
+				if (is_selected) {
 					ImGui::SetItemDefaultFocus();
+				}
 			}
+		};
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
+			hovered = true;
+		}
+		dear::Tooltip{hovered} && [] {
+			ImGui::TextUnformatted("Amplitude modulation sensivity");
 		};
 		if(const auto new_val = handle_combo_scroll<oper::ams_values.size()>(op.ams())) {
 			op.ams(*new_val);
@@ -581,6 +623,10 @@ namespace MID3SMPS {
 	}
 	void ym2612_edit::render_fms(fm::operators &op) {
 		ImGui::TextUnformatted("FMS  %");
+		bool hovered = false;
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
+			hovered = true;
+		}
 		ImGui::SameLine();
 		using oper = fm::operators;
 		static constexpr std::array strings = {
@@ -595,17 +641,23 @@ namespace MID3SMPS {
 		};
 		const auto val = op.fms();
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo("##FMS value", strings[val].data()) && [this, &op] {
+		dear::Combo{"##FMS value", strings[val].data()} && [this, &op] {
 			for (std::size_t i = 0; i < oper::fms_values.size(); i++){
 				const bool is_selected = op.fms() == i;
 				if (ImGui::Selectable(strings[i].data(), is_selected)) {
 					op.fms(static_cast<std::uint8_t>(i));
 				}
 
-				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-				if (is_selected)
+				if (is_selected) {
 					ImGui::SetItemDefaultFocus();
+				}
 			}
+		};
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
+			hovered = true;
+		}
+		dear::Tooltip{hovered} && [] {
+			ImGui::TextUnformatted("Frequency modulation sensivity");
 		};
 		if(const auto new_val = handle_combo_scroll<oper::fms_values.size()>(op.fms())) {
 			op.fms(*new_val);
@@ -617,14 +669,13 @@ namespace MID3SMPS {
 		const auto val = op.feedback();
 		using oper = fm::operators;
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo("##Feedback value", oper::string(val).data()) && [this, &op, &val] {
+		dear::Combo{"##Feedback value", oper::string(val).data()} && [this, &op, &val] {
 			for (const auto &current : fm::list<oper::feedback_mode>()){
 				const bool is_selected = val == current;
 				if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
 					op.feedback(current);
 				}
 
-				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
 				if (is_selected) {
 					ImGui::SetItemDefaultFocus();
 				}
@@ -634,20 +685,20 @@ namespace MID3SMPS {
 			op.feedback(*new_val);
 		}
 	}
+
 	void ym2612_edit::render_algorithm(fm::operators &op) {
 		ImGui::TextUnformatted("Algorithm");
 		ImGui::TableNextColumn();
 		const auto val = op.algorithm();
 		using oper = fm::operators;
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo("##Algorithm value", oper::string(val).data()) && [this, &op, &val] {
+		dear::Combo{"##Algorithm value", oper::string(val).data()} && [this, &op, &val] {
 			for (const auto &current : fm::list<oper::algorithm_mode>()){
 				const bool is_selected = val == current;
 				if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
 					op.algorithm(current);
 				}
 
-				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
 				if (is_selected) {
 					ImGui::SetItemDefaultFocus();
 				}
@@ -662,7 +713,7 @@ namespace MID3SMPS {
 		ImGui::TextUnformatted("Transposition");
 		ImGui::TableNextColumn();
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo("##Transposition value", "0 (Default)") && [this, &op] {
+		dear::Combo{"##Transposition value", "0 (Default)"} && [this, &op] {
 			(void)op;
 		};
 	}

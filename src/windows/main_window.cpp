@@ -1,6 +1,3 @@
-#include "main_window.hpp"
-#include "containers/program_persistence.hpp"
-
 #include <imgui.h>
 #include <ImGuiFileDialog.h>
 #include <imguiwrap.dear.h>
@@ -8,9 +5,10 @@
 #include <thread>
 #include <fmt/core.h>
 
+#include "ym2612_edit.hpp"
+#include "main_window.hpp"
+#include "containers/program_persistence.hpp"
 #include "containers/files/mapping.hpp"
-
-using namespace std::literals;
 
 static const IGFD::FileDialogConfig default_file_dialog_config{
 	.path = "",
@@ -58,7 +56,7 @@ namespace MID3SMPS {
 				open_mapping(std::move(map), false);
 			}
 		}
-		dear::Begin(window_title(), &stay_open_, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse) && [this] {
+		dear::Begin{window_title_impl(), &stay_open_, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse} && [this] {
 			show_menu_bar();
 
 			constexpr float minWidth  = 200;
@@ -70,6 +68,7 @@ namespace MID3SMPS {
 			const bool meets_min_width  = windowWidth > minWidth;
 			const bool meets_min_height = windowHeight > minHeight;
 
+			using namespace std::literals;
 			static std::string midiPathCache;
 			cached_wrap_text("Loaded MIDI:"s, midi_path_, midiPathCache, "No MIDI loaded"s);
 			if(meets_min_height) {
@@ -117,8 +116,8 @@ namespace MID3SMPS {
 
 			ImGui::SetCursorPosY(windowHeight - 20);
 			ImGui::SetNextWindowBgAlpha(0.75f);
-			dear::Child("Status Bar") && [&] {
-				dear::Text(fmt::format("{}", status_));
+			dear::Child{"Status Bar"} && [&] {
+				ImGui::TextUnformatted(status_.c_str());
 			};
 		};
 
@@ -128,12 +127,12 @@ namespace MID3SMPS {
 	void main_window::show_menu_bar() {
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {8, 0});
 		ImGui::PushItemWidth(ImGui::GetFontSize() * -12);
-		dear::MenuBar() && [this] {
-			dear::Menu("File") && [this] {
+		dear::MenuBar{} && [this] {
+			dear::Menu{"File"} && [this] {
 				if(ImGui::MenuItem("Open Midi", "Ctrl+O")) {
 					ImGuiFileDialog::Instance()->OpenDialog(OpenMidi, "Choose a Midi file", ".mid,.midi", default_file_dialog_config);
 				}
-				dear::Menu("Open Recent") && [this] {
+				dear::Menu{"Open Recent"} && [this] {
 					const auto &paths = persistence->recent_midis();
 					for(const auto &current_path: std::ranges::reverse_view(paths)) {
 						ImGui::PushID(&current_path);
@@ -161,7 +160,7 @@ namespace MID3SMPS {
 					exit_menu();
 				}
 			};
-			dear::Menu("Instruments & Mappings") && [this] {
+			dear::Menu{"Instruments & Mappings"} && [this] {
 				if(ImGui::MenuItem("Open mapping configuration", "F5")) {
 					open_mapping_menu();
 				}
@@ -176,7 +175,7 @@ namespace MID3SMPS {
 					open_mappings_editor();
 				}
 			};
-			dear::Menu("Extras") && [this] {
+			dear::Menu{"Extras"} && [this] {
 				if(ImGui::MenuItem("Tempo calculator", "Ctrl+T")) {
 					open_tempo_calculator();
 				}
@@ -190,12 +189,14 @@ namespace MID3SMPS {
 					ImGui::Separator();
 					static bool override;
 					ImGui::Checkbox("Override Idle", &override);
-					static FpsIdling::Override idleOverride;
+					static FpsIdling::override idleOverride;
 					if(override && !idleOverride) {
-						idleOverride = handler.idling().getOverride();
+						idleOverride = handler.idling().get_override();
 					} else if(!override && idleOverride) {
 						idleOverride = {};
 					}
+
+					ImGui::Checkbox("Show demo window", &MID3SMPS::show_demo_window);
 				}
 			};
 		};
@@ -316,7 +317,7 @@ namespace MID3SMPS {
 
 	void main_window::open_instrument_editor() {
 		if(!ym2612_edit_) {
-			const auto idle = handler.idling().getOverride(); // override idle while loading, for speed
+			[[maybe_unused]] const auto idle = handler.idling().get_override(); // override idle while loading, for speed
 			ym2612_edit_ = std::make_unique<ym2612_edit>();
 		} else {
 			ImGui::SetWindowFocus(ym2612_edit_->window_title());

@@ -83,7 +83,8 @@ if(${FORCE_COLORED_OUTPUT})
 endif()
 
 add_library(MID3SMPS STATIC
-		src/backend/window_handler.cpp src/windows/main_window.cpp src/windows/main_window.hpp
+		src/backend/window_handler.cpp
+		src/windows/main_window.cpp src/windows/main_window.hpp
 		src/windows/ym2612_edit.cpp src/windows/ym2612_edit.hpp
 		src/containers/program_persistence.cpp src/containers/program_persistence.hpp
 		src/containers/files/mapping.cpp src/containers/files/mapping.hpp
@@ -101,6 +102,7 @@ target_link_libraries(MID3SMPS imguiwrap ImGuiFileDialog fmt::fmt-header-only li
 target_compile_definitions(MID3SMPS
 		PUBLIC
 		# If the debug configuration pass the DEBUG define to the compiler
+		#$<$<CONFIG:Debug>:DEBUG _GLIBCXX_DEBUG>
 		$<$<CONFIG:Debug>:DEBUG>
 )
 
@@ -109,5 +111,10 @@ add_executable(MID3SMPS_EXECUTABLE
 )
 
 target_link_libraries(MID3SMPS_EXECUTABLE MID3SMPS)
+
+set(FONTS_SRC data/fonts)
+set(FONTS_DST ${FONTS_SRC})
+
+file(INSTALL ${FONTS_SRC}/SourceCodePro-Black.ttf ${FONTS_SRC}/SourceCodePro-Semibold.ttf DESTINATION ${CMAKE_BINARY_DIR}/${FONTS_DST})
 
 add_subdirectory(test)

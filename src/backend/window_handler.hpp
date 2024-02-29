@@ -15,37 +15,37 @@ struct FpsIdling{
 	bool  isIdling = false;      // an output parameter filled by the runner
 	std::atomic<uint_fast8_t> overrides = 0;
 
-	[[nodiscard]] bool isIdleOverride() const{
+	[[nodiscard]] bool is_idle_override() const{
 		return overrides > 0;
 	}
 
-	class Override{
+	class override{
 		friend struct FpsIdling;
 		FpsIdling* ref = nullptr;
 
-		constexpr explicit Override(FpsIdling& ref_) : ref(&ref_) {
+		constexpr explicit override(FpsIdling& ref_) : ref(&ref_) {
 			++ref->overrides;
 		}
 
 	public:
-		constexpr Override() = default;
+		constexpr override() = default;
 
-		constexpr Override(Override&& other) noexcept {
+		constexpr override(override&& other) noexcept {
 			std::swap(ref, other.ref);
 		}
-		constexpr Override(const Override &other) : Override(*other.ref){}
+		constexpr override(const override &other) : override(*other.ref){}
 
-		constexpr ~Override() noexcept{
+		constexpr ~override() noexcept{
 			if(!ref) { return; }
 			--ref->overrides;
 		}
 
-		constexpr Override& operator =(Override &&other) noexcept{
+		constexpr override& operator =(override &&other) noexcept{
 			std::swap(ref, other.ref);
 			return *this;
 		}
 
-		constexpr Override& operator =(const Override &other) noexcept{
+		constexpr override& operator =(const override &other) noexcept{
 			if(this == &other) { return *this; }
 			ref = other.ref;
 			++ref->overrides;
@@ -57,8 +57,8 @@ struct FpsIdling{
 		}
 	};
 
-	[[nodiscard]] Override getOverride(){
-		return Override(*this);
+	[[nodiscard]] override get_override(){
+		return override(*this);
 	}
 };
 
@@ -66,6 +66,8 @@ class window_handler {
 	std::unique_ptr<MID3SMPS::main_window> mainWindow;
 	ImGuiWrapConfig config_;
 	FpsIdling idling_;
+	ImFont* main_font_ = nullptr;
+	ImFont* main_font_bold_ = nullptr;
 
 public:
 
@@ -73,12 +75,22 @@ public:
 	[[nodiscard]] FpsIdling& idling() noexcept;
 
 	window_handler();
-	static void MainLoopInit();
-	ImGuiWrapperReturnType MainLoopStep();
+	void main_loop_init();
+	ImGuiWrapperReturnType main_loop_step();
 
-	void IdleBySleeping();
+	void idle_by_sleeping();
+	void reload_fonts(float pixel_size = 15.f);
+
+private:
+	/*consteval*/ static ImFontConfig generate_font_config();
 };
 
 namespace MID3SMPS {
-	static window_handler handler;
+	extern window_handler handler;
+	#ifdef DEBUG
+	constexpr bool debug_mode = true;
+	extern bool show_demo_window;
+	#else
+	constexpr bool debug_mode = false;
+	#endif
 }

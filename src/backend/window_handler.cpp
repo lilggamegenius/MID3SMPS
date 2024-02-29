@@ -1,13 +1,18 @@
-#include "backend/window_handler.hpp"
-#include "windows/main_window.hpp"
-#include "containers/program_persistence.hpp"
-
-#include <GLFW/glfw3.h>
-#include <imguiwrap.h>
 #include <imguiwrap.dear.h>
+#include <imguiwrap.h>
 #include <imgui_internal.h>
+#include <GLFW/glfw3.h>
 
-void window_handler::MainLoopInit() {
+#include "backend/window_handler.hpp"
+#include "containers/program_persistence.hpp"
+#include "windows/main_window.hpp"
+
+namespace MID3SMPS {
+	bool show_demo_window = true;
+	window_handler handler;
+}
+
+void window_handler::main_loop_init() {
 	// Add .ini handle for UserData type
 	ImGuiSettingsHandler ini_handler;
 	ini_handler.TypeName   = MID3SMPS::program_persistence::TypeName;
@@ -22,16 +27,31 @@ void window_handler::MainLoopInit() {
 	style.ItemSpacing = {0, 2};
 	style.FramePadding = {4, 1};
 	style.CellPadding = dear::Zero;
+
+	reload_fonts();
 }
 
-ImGuiWrapperReturnType window_handler::MainLoopStep(){
-	IdleBySleeping();
-#ifdef DEBUG
-	static bool show_demo_window = true;
+/*consteval*/ ImFontConfig window_handler::generate_font_config() {
+	ImFontConfig cfg;
+	cfg.OversampleH = cfg.OversampleV = 3;
+	return cfg;
+}
 
-	// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-	if(show_demo_window){
-		ImGui::ShowDemoWindow(&show_demo_window);
+void window_handler::reload_fonts(float pixel_size) {
+	const auto fonts = ImGui::GetIO().Fonts;
+	fonts->ClearFonts();
+	static /*constexpr*/ ImFontConfig cfg = generate_font_config();
+	#define FOLDER_PATH "data/fonts/" // macro because there's no way to concat strings at compile-time
+	main_font_ = fonts->AddFontFromFileTTF(FOLDER_PATH "SourceCodePro-Semibold.ttf", pixel_size, &cfg);
+	main_font_bold_ = fonts->AddFontFromFileTTF(FOLDER_PATH "SourceCodePro-Black.ttf", pixel_size, &cfg);
+	#undef FOLDER_PATH
+}
+
+ImGuiWrapperReturnType window_handler::main_loop_step(){
+	idle_by_sleeping();
+#ifdef DEBUG
+	if(MID3SMPS::show_demo_window){
+		ImGui::ShowDemoWindow(&MID3SMPS::show_demo_window);
 	}
 #endif
 	mainWindow->render();
@@ -55,11 +75,11 @@ window_handler::window_handler(){
 	mainWindow = std::make_unique<MID3SMPS::main_window>();
 }
 
-void window_handler::IdleBySleeping(){
+void window_handler::idle_by_sleeping(){
 	constexpr uint_fast8_t framesToWait = 2;
 	static uint_fast8_t framesBeforeIdle = framesToWait;
 	idling_.isIdling = false;
-	if(idling_.isIdleOverride()){
+	if(idling_.is_idle_override()){
 		framesBeforeIdle = framesToWait;
 		return;
 	}

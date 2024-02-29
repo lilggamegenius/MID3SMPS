@@ -1,8 +1,10 @@
 #pragma once
 
+#include <string_view>
+
+#include "windows/window.hpp"
 #include "containers/files/gyb.hpp"
 #include "containers/files/fm/operators.hpp"
-#include <string_view>
 
 namespace MID3SMPS {
 	using namespace std::string_view_literals;
@@ -24,6 +26,7 @@ namespace MID3SMPS {
 			}
 			return num_formats[0];
 		}
+		float last_space_remaining = 0;
 
 		gyb gyb_{};
 
@@ -33,6 +36,7 @@ namespace MID3SMPS {
 		void render_editor_analog();
 
 		void render_lfo();
+		void render_operator_headers();
 
 		void render_detune(fm::operators &op, const fm::operators::op_id &op_id);
 		void render_multiple(fm::operators &op, const fm::operators::op_id &op_id);
@@ -52,6 +56,8 @@ namespace MID3SMPS {
 		void render_algorithm(fm::operators &op);
 		void render_transposition(fm::operators &op);
 		void render_registers(/*const*/ fm::operators &op, std::uint_fast8_t current_row) const;
+
+		void scale_window();
 
 		enum class scroll_wheel_direction {
 			positive,

@@ -8,7 +8,7 @@
 namespace MID3SMPS::fm {
 	using namespace std::string_view_literals;
 	struct operators {
-		using register_t = std::uint8_t;
+		using register_t                                     = std::uint8_t;
 		static constexpr register_t instrument_register_size = 0x1E;
 		std::array<register_t, instrument_register_size> registers{};
 
@@ -240,7 +240,7 @@ namespace MID3SMPS::fm {
 
 		constexpr void ssgeg(const op_id &op, const ssgeg_mode mode) {
 			auto &ssgeg_reg = reg(op, 6);
-			ssgeg_reg = std::to_underlying(mode);
+			ssgeg_reg       = std::to_underlying(mode);
 		}
 
 		static constexpr std::array ams_values = {
@@ -252,7 +252,7 @@ namespace MID3SMPS::fm {
 
 		[[nodiscard, gnu::pure]] constexpr register_t ams() const {
 			const auto &lfo_sensitivity_reg = reg(op_id::op3, 7);
-			auto val = lfo_sensitivity_reg & masks::ams;
+			auto val                        = lfo_sensitivity_reg & masks::ams;
 			val >>= 4;
 			return val;
 		}
@@ -282,7 +282,7 @@ namespace MID3SMPS::fm {
 		}
 
 		constexpr void fms(const register_t new_fms_val) {
-			const auto &val = std::min(new_fms_val, masks::fms);
+			const auto &val           = std::min(new_fms_val, masks::fms);
 			auto &lfo_sensitivity_reg = reg(op_id::op3, 7);
 			lfo_sensitivity_reg &= masks::ams;
 			lfo_sensitivity_reg |= val;
@@ -332,12 +332,12 @@ namespace MID3SMPS::fm {
 			switch(mode) {
 				case no_change_1:
 				case no_change_2: return "No Change"sv;
-				case plus_e: return "× (1+e)"sv;
-				case plus_2e: return "× (1+2e)"sv;
-				case plus_3e: return "× (1+3e)"sv;
-				case minus_e: return "× (1-e)"sv;
-				case minus_2e: return "× (1-2e)"sv;
-				case minus_3e: return "× (1-3e)"sv;
+				case plus_e: return "+1 × E"sv;
+				case plus_2e: return "+2 × E"sv;
+				case plus_3e: return "+3 × E"sv;
+				case minus_e: return "-1 × E"sv;
+				case minus_2e: return "-2 × E"sv;
+				case minus_3e: return "-3 × E"sv;
 				default: throw std::logic_error(fmt::format("Invalid value for detune_mode, got {}", std::to_underlying(mode)));
 			}
 		}

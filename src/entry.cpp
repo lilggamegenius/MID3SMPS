@@ -1,14 +1,13 @@
 #include "backend/window_handler.hpp"
-#include "windows/main_window.hpp"
 
 int main() {
 	return imgui_main(
 		MID3SMPS::handler.config(),
 		[] {
-			return MID3SMPS::handler.MainLoopStep();
+			return MID3SMPS::handler.main_loop_step();
 		},
 		[] {
-			window_handler::MainLoopInit();
+			MID3SMPS::handler.main_loop_init();
 		}
 	);
 }

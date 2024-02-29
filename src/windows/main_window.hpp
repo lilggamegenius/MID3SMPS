@@ -1,18 +1,16 @@
 #pragma once
 
 #include <filesystem>
-
 #include <libremidi/libremidi.hpp>
 #include <libremidi/reader.hpp>
 
 #include "window.hpp"
-#include "backend/window_handler.hpp"
 #include "containers/dirtyable.hpp"
-#include "ym2612_edit.hpp"
 
 namespace fs = std::filesystem;
 
 namespace MID3SMPS {
+	class ym2612_edit;
 	class main_window : public window<main_window>{
 		bool stay_open_ = true;
 
@@ -24,12 +22,12 @@ namespace MID3SMPS {
 
 		dirtyable<fs::path> mapping_path_{fs::path()};
 
-		std::unique_ptr<ym2612_edit> ym2612_edit_ = nullptr;
+		std::unique_ptr<ym2612_edit> ym2612_edit_{};
 
-		int ticks_per_quarter_ = 0;
-		int ticks_multiplier_ = 0;
+		int ticks_per_quarter_{};
+		int ticks_multiplier_{};
 
-		int midi_resolution_ = 0;
+		int midi_resolution_{};
 
 		mutable std::string status_;
 
@@ -76,14 +74,6 @@ namespace MID3SMPS {
 		static constexpr std::string SaveSmps = "SaveSmps";
 		static constexpr std::string OpenMapping = "OpenMapping";
 		// ReSharper restore CppInconsistentNaming
-
-	public:
-		static constexpr bool debug_mode =
-			#ifdef DEBUG
-				true;
-			#else
-				false;
-			#endif
 	};
 
 	fs::path get_path_from_file_dialog();
