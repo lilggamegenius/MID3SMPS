@@ -72,6 +72,25 @@ namespace MID3SMPS {
 		return std::nullopt;
 	}
 
+	template<>
+	std::optional<gyb::lfo> ym2612_edit::handle_combo_scroll(const gyb::lfo &enumeration) {
+		using T = gyb::lfo;
+		static constexpr auto size = std::to_underlying(T::mode7)+1;
+		const auto underlying = std::to_underlying(enumeration);
+		const auto new_enum = handle_combo_scroll<size, decltype(underlying)>(underlying);
+		if(new_enum) {
+			auto value = *new_enum;
+			if(value == std::to_underlying(T::off)+1) {
+				return T::mode0;
+			}
+			if(value == std::to_underlying(T::mode0)-1) {
+				return T::off;
+			}
+			return static_cast<T>(value);
+		}
+		return std::nullopt;
+	}
+
 	void ym2612_edit::render_impl() {
 		dear::Begin{window_title_impl(), &open_, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse} && [this] {
 			//const auto dock_node = ImGui::GetWindowDockNode();
@@ -79,10 +98,14 @@ namespace MID3SMPS {
 			render_patch_selection();
 			dear::TabBar{"Editor tabs"} && [this] {
 				dear::TabItem{"Digital"} && [this] {
-					render_editor_digital();
+					dear::Disabled(!has_selected_patch()) && [this] {
+						render_editor_digital();
+					};
 				};
 				dear::TabItem{"Analog"} && [this] {
-					render_editor_analog();
+					dear::Disabled(!has_selected_patch()) && [this] {
+						render_editor_analog();
+					};
 				};
 			};
 			scale_window();
@@ -90,28 +113,65 @@ namespace MID3SMPS {
 	}
 
 	void ym2612_edit::render_menu_bar() {
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {8, 0});
-		dear::MenuBar{} && [this] {
-			if(ImGui::MenuItem("Open new bank")) {}
-			if(ImGui::MenuItem("Save bank")) {}
-			if(ImGui::MenuItem("Bank switch")) {}
-			if(ImGui::MenuItem("Import from file")) {}
-			if(ImGui::MenuItem("About")) {}
+		dear::WithStyleVar(ImGuiStyleVar_ItemSpacing, {8, 0}) && [this] {
+			dear::MenuBar{} && [this] {
+				if(ImGui::MenuItem("Open new bank")) {}
+				if(ImGui::MenuItem("Save bank")) {}
+				if(ImGui::MenuItem("Bank switch")) {}
+				if(ImGui::MenuItem("Import from file")) {}
+				if(ImGui::MenuItem("About")) {}
+			};
 		};
-		ImGui::PopStyleVar();
-	}
-
-	ImVec2 ym2612_edit::calculate_child_size() {
-		const auto win_size = ImGui::GetContentRegionAvail();
-		ImVec2 child_size(win_size);
-		child_size.y *= .45;
-		return child_size;
 	}
 
 	void ym2612_edit::render_patch_selection() {
-		const auto child_size = calculate_child_size();
-		dear::Child{"Patch Info", child_size, ImGuiChildFlags_Border|ImGuiChildFlags_ResizeY} && [this] {
-			ImGui::TextUnformatted("Placeholder space");
+		dear::WithStyleVar style(ImGuiStyleVar_WindowPadding, {0, 0});
+		auto child_size = ImGui::GetContentRegionAvail();
+		child_size.y *= .45;
+		dear::Child{"Patch Info", child_size, ImGuiChildFlags_ResizeY} && [this, &child_size] {
+			dear::Child("Patch selector", {child_size.x / 4, -1}, ImGuiChildFlags_Border) && [this] {
+				static constexpr ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+
+				for(const auto &[bank, data] : gyb_.patches_order) {
+					const auto &[name, ids] = data;
+
+					auto category_flags = base_flags;
+					if(selected_bank_id() == bank) {
+						category_flags |= ImGuiTreeNodeFlags_Selected;
+					}
+					dear::TreeNodeEx(name.c_str(), category_flags) && [this, &ids, &bank] {
+						ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
+						for(const auto &id : ids) {
+							const auto &patch = gyb_.patches[id];
+							auto patch_flags = base_flags;
+							if(selected_patch_id() == id) {
+								patch_flags |= ImGuiTreeNodeFlags_Selected;
+							}
+							patch_flags |= ImGuiTreeNodeFlags_Leaf;
+							dear::TreeNodeEx(patch.name.c_str(), patch_flags) && [this, &bank, &id, &patch] {
+								if(ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+									selected_id = {bank, id};
+								}
+								dear::ItemTooltip() && [&patch] {
+									ImGui::TextUnformatted(patch.name.c_str());
+								};
+							};
+						}
+						ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
+					};
+				}
+			};
+			ImGui::SameLine();
+			dear::Child("Mapping selector", {child_size.x / 4, -1}, ImGuiChildFlags_Border) && [this] {
+
+			};
+			ImGui::SameLine();
+			dear::Child("Oscilloscope", {child_size.x / 2, -1}, ImGuiChildFlags_Border) && [this] {
+				static constexpr std::array test = {
+					0.f, 127.f, 64.f, 50.f, 0.f, 0.f
+				};
+				ImGui::PlotLines("##Envelope", test.data(), test.size(), 0, nullptr, 0.f, std::numeric_limits<std::int8_t>::max(), {-1, -1});
+			};
 		};
 	}
 
@@ -120,24 +180,8 @@ namespace MID3SMPS {
 		auto child_size = ImGui::GetContentRegionAvail();
 		child_size.y = 0;
 		child_size.x *= 5.f / 7.f;
-		static fm::patch test{
-			.name = "Test patch",
-			.operators = {
-				.registers = {
-					0x00, 0x00, 0x00, 0x00,
-					0x7F, 0x7F, 0x7F, 0x7F,
-					0x1F, 0x1F, 0x1F, 0x1F,
-					0x1F, 0x1F, 0x1F, 0x1F,
-					0x1F, 0x1F, 0x1F, 0x1F,
-					0x0F, 0x0F, 0x0F, 0x0F,
-					0x00, 0x00, 0x00, 0x00,
-					0x00, 0x00
-				}
-			}
-		};
 		dear::Table{"Patch Editor Table 1", 5, table_flags, child_size} && [this] {
 			static constexpr auto row_count = 12;
-			ImGui::BeginDisabled(false);
 			//const auto availible_space = ImGui::GetContentRegionAvail();
 			//const auto cell_space = availible_space.y / row_count;
 			const auto column_0_width = ImGui::CalcTextSize("Amplitude Modulation");
@@ -155,7 +199,7 @@ namespace MID3SMPS {
 						ImGui::TextUnformatted("Detune");
 						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
 							ImGui::TableNextColumn();
-							render_detune(test.operators, op_id);
+							render_detune(op_id);
 						}
 						break;
 					}
@@ -164,7 +208,7 @@ namespace MID3SMPS {
 						ImGui::TextUnformatted("Multiple");
 						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
 							ImGui::TableNextColumn();
-							render_multiple(test.operators, op_id);
+							render_multiple(op_id);
 						}
 						break;
 					}
@@ -173,7 +217,7 @@ namespace MID3SMPS {
 						ImGui::TextUnformatted("Total Level");
 						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
 							ImGui::TableNextColumn();
-							render_total_level(test.operators, op_id);
+							render_total_level(op_id);
 						}
 						break;
 					}
@@ -182,7 +226,7 @@ namespace MID3SMPS {
 						ImGui::TextUnformatted("Rate Scaling");
 						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
 							ImGui::TableNextColumn();
-							render_rate_scaling(test.operators, op_id);
+							render_rate_scaling(op_id);
 						}
 						break;
 					}
@@ -191,7 +235,7 @@ namespace MID3SMPS {
 						ImGui::TextUnformatted("Attack Rate");
 						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
 							ImGui::TableNextColumn();
-							render_attack_rate(test.operators, op_id);
+							render_attack_rate(op_id);
 						}
 						break;
 					}
@@ -200,7 +244,7 @@ namespace MID3SMPS {
 						ImGui::TextUnformatted("Amplitude Modulation");
 						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
 							ImGui::TableNextColumn();
-							render_amplitude_modulation(test.operators, op_id);
+							render_amplitude_modulation(op_id);
 						}
 						break;
 					}
@@ -209,7 +253,7 @@ namespace MID3SMPS {
 						ImGui::TextUnformatted("Decay Rate");
 						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
 							ImGui::TableNextColumn();
-							render_decay_rate(test.operators, op_id);
+							render_decay_rate(op_id);
 						}
 						break;
 					}
@@ -218,7 +262,7 @@ namespace MID3SMPS {
 						ImGui::TextUnformatted("Sustain Rate");
 						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
 							ImGui::TableNextColumn();
-							render_sustain_rate(test.operators, op_id);
+							render_sustain_rate(op_id);
 						}
 						break;
 					}
@@ -227,7 +271,7 @@ namespace MID3SMPS {
 						ImGui::TextUnformatted("Sustain Level");
 						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
 							ImGui::TableNextColumn();
-							render_sustain_level(test.operators, op_id);
+							render_sustain_level(op_id);
 						}
 						break;
 					}
@@ -236,7 +280,7 @@ namespace MID3SMPS {
 						ImGui::TextUnformatted("Release Rate");
 						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
 							ImGui::TableNextColumn();
-							render_release_rate(test.operators, op_id);
+							render_release_rate(op_id);
 						}
 						break;
 					}
@@ -245,14 +289,13 @@ namespace MID3SMPS {
 						ImGui::TextUnformatted("SSG-EG");
 						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
 							ImGui::TableNextColumn();
-							render_ssgeg(test.operators, op_id);
+							render_ssgeg(op_id);
 						}
 						break;
 					}
 					default: break;
 				}
 			}
-			ImGui::EndDisabled();
 		};
 		ImGui::SameLine();
 		dear::Table{"Patch Editor Table 2", 2, table_flags} && [this] {
@@ -261,21 +304,21 @@ namespace MID3SMPS {
 				switch(row) {
 					case 0:
 						ImGui::TableNextColumn();
-						render_ams(test.operators);
+						render_ams();
 						ImGui::TableNextColumn();
-						render_fms(test.operators);
+						render_fms();
 						break;
 					case 1:
 						ImGui::TableNextColumn();
-						render_feedback(test.operators);
+						render_feedback();
 						break;
 					case 2:
 						ImGui::TableNextColumn();
-						render_algorithm(test.operators);
+						render_algorithm();
 						break;
 					case 3:
 						ImGui::TableNextColumn();
-						render_transposition(test.operators);
+						render_transposition();
 						break;
 					case 4:
 					case 6:
@@ -305,7 +348,7 @@ namespace MID3SMPS {
 					case 11: {
 						ImGui::TableNextColumn();
 						const std::uint_fast8_t current_row = (row/2)-2;
-						render_registers(test.operators, current_row);
+						render_registers(current_row);
 						break;
 					}
 					default: break;
@@ -322,6 +365,7 @@ namespace MID3SMPS {
 		auto &window_scale = current_window->FontWindowScale;
 		static constexpr float free_space_range = 17.f;
 		static constexpr float scale_diff = 0.04f;
+		// ReSharper disable once CppEntityAssignedButNoRead
 		static std::optional<FpsIdling::override> override = std::nullopt;
 		if(last_space_remaining > free_space_range) {
 			window_scale += scale_diff;
@@ -340,6 +384,19 @@ namespace MID3SMPS {
 		ImGui::TextUnformatted("Not done yet, go away");
 	}
 
+	fm::patch& ym2612_edit::selected_patch() {
+		if(selected_id) {
+			return gyb_.patches[selected_id->second];
+		}
+		return const_cast<fm::patch&>(fm::empty_patch); // Patch editing is disabled if there is no patch selected
+	}
+	const fm::patch& ym2612_edit::selected_patch() const{
+		if(selected_id) {
+			return gyb_.patches.at(selected_id->second);
+		}
+		return fm::empty_patch;
+	}
+
 	void ym2612_edit::render_lfo() {
 		ImGui::TextUnformatted("LFO  ");
 		bool hovered = false;
@@ -347,24 +404,13 @@ namespace MID3SMPS {
 			hovered = true;
 		}
 		ImGui::SameLine();
-		static constexpr std::array strings = {
-			"Off"sv,
-			"3.98 Hz"sv,
-			"5.56 Hz"sv,
-			"6.02 Hz"sv,
-			"6.37 Hz"sv,
-			"6.88 Hz"sv,
-			"9.63 Hz"sv,
-			"48.1 Hz"sv,
-			"72.2 Hz"sv,
-		};
 		auto &val = gyb_.default_LFO_speed;
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo{"##LFO Value", strings[val].data()} && [this, &val] {
-			for (std::size_t i = 0; i < gyb::lfo_values.size(); i++){
-				const bool is_selected = gyb_.default_LFO_speed == i;
-				if (ImGui::Selectable(strings[i].data(), is_selected)) {
-					val = static_cast<std::uint8_t>(i);
+		dear::Combo{"##LFO Value", gyb::string(val).data()} && [this, &val] {
+			for (const auto &current : fm::list<gyb::lfo>()){
+				const bool is_selected = gyb_.default_LFO_speed == current;
+				if (ImGui::Selectable(gyb::string(current).data(), is_selected)) {
+					val = current;
 				}
 
 				if (is_selected) {
@@ -378,7 +424,7 @@ namespace MID3SMPS {
 		dear::Tooltip{hovered} && [] {
 			ImGui::TextUnformatted("Used to enable FMS and AMS to work for some simple vibrato and tremolo-like effects.");
 		};
-		if(const auto new_val = handle_combo_scroll<strings.size()>(val)) {
+		if(const auto new_val = handle_combo_scroll(val)) {
 			val = *new_val;
 		}
 	}
@@ -392,198 +438,210 @@ namespace MID3SMPS {
 				std::advance(iter, 9); // Only show the operator number if window is too small
 			}
 			ImGui::TextUnformatted(iter, str.cend());
-			dear::ItemTooltip{} && [&str] {
+			dear::ItemTooltip{} && [this, &str] {
 				ImGui::Text("Imagine an envelope preview here for %s", str.data());
+				[[maybe_unused]] const auto &patch = selected_patch();
 			};
 		}
 	}
 
-	void ym2612_edit::render_detune(fm::operators &op, const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_detune(const fm::operators::op_id &op_id) {
 		using oper = fm::operators;
-		ImGui::PushID(&op_id);
-		ImGui::SetNextItemWidth(-1);
-		const auto val = op.detune(op_id);
-		dear::Combo{"##detune", oper::string(val).data()} && [this, &op, &op_id, &val] {
-			for (const auto &current : fm::list<oper::detune_mode>()){
-				const bool is_selected = val == current;
-				if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
-					op.detune(op_id, current);
-				}
+		dear::WithID(&op_id) && [this, &op_id] {
+			ImGui::SetNextItemWidth(-1);
+			auto &op = selected_patch().operators;
+			const auto val = op.detune(op_id);
+			dear::Combo{"##detune", oper::string(val).data()} && [this, &op, &op_id, &val] {
+				for (const auto &current : fm::list<oper::detune_mode>()){
+					const bool is_selected = val == current;
+					if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
+						op.detune(op_id, current);
+					}
 
-				if (is_selected) {
-					ImGui::SetItemDefaultFocus();
+					if (is_selected) {
+						ImGui::SetItemDefaultFocus();
+					}
 				}
+			};
+			if(const auto new_val = handle_combo_scroll(val)) {
+				op.detune(op_id, *new_val);
 			}
 		};
-		if(const auto new_val = handle_combo_scroll(val)) {
-			op.detune(op_id, *new_val);
-		}
-		ImGui::PopID();
 	}
-	void ym2612_edit::render_multiple(fm::operators &op, const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_multiple(const fm::operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 16/4;
-		auto val = op.multiple(op_id);
-		ImGui::PushID(&op_id);
-		ImGui::SetNextItemWidth(-1);
-		if(ImGui::InputScalar("##multiple", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
-			op.multiple(op_id, val);
-		}
-		if(const auto new_val = handle_combo_scroll(val, true)) {
-			op.multiple(op_id, *new_val);
-		}
-		ImGui::PopID();
-	}
-	void ym2612_edit::render_total_level(fm::operators &op, const fm::operators::op_id &op_id) {
-		static constexpr std::uint8_t step = 0x1, step_fast = 128/4;
-		auto val = op.total_level(op_id);
-		ImGui::PushID(&op_id);
-		ImGui::SetNextItemWidth(-1);
-		if(ImGui::InputScalar("##total_level", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
-			op.total_level(op_id, val);
-		}
-		if(const auto new_val = handle_combo_scroll(val, true)) {
-			op.total_level(op_id, *new_val);
-		}
-		ImGui::PopID();
-	}
-	void ym2612_edit::render_rate_scaling(fm::operators &op, const fm::operators::op_id &op_id) {
-		using oper = fm::operators;
-		const auto val = op.rate_scaling(op_id);
-		ImGui::PushID(&op_id);
-		ImGui::SetNextItemWidth(-1);
-		dear::Combo{"##rate_scaling",  oper::string(val).data()} && [this, &op, &op_id, &val] {
-			for (const auto &current : fm::list<oper::rate_scaling_mode>()){
-				const bool is_selected = val == current;
-				if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
-					op.rate_scaling(op_id, current);
-				}
-
-				if (is_selected) {
-					ImGui::SetItemDefaultFocus();
-				}
+		dear::WithID(&op_id) && [this, &op_id] {
+			auto &op = selected_patch().operators;
+			auto val = op.multiple(op_id);
+			ImGui::SetNextItemWidth(-1);
+			if(ImGui::InputScalar("##multiple", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
+				op.multiple(op_id, val);
+			}
+			if(const auto new_val = handle_combo_scroll(val, true)) {
+				op.multiple(op_id, *new_val);
 			}
 		};
-		if(const auto new_val = handle_combo_scroll(val)) {
-			op.rate_scaling(op_id, *new_val);
-		}
-		ImGui::PopID();
 	}
-	void ym2612_edit::render_attack_rate(fm::operators &op, const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_total_level(const fm::operators::op_id &op_id) {
+		static constexpr std::uint8_t step = 0x1, step_fast = 128/4;
+		dear::WithID(&op_id) && [this, &op_id] {
+			auto &op = selected_patch().operators;
+			auto val = op.total_level(op_id);
+			ImGui::SetNextItemWidth(-1);
+			if(ImGui::InputScalar("##total_level", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
+				op.total_level(op_id, val);
+			}
+			if(const auto new_val = handle_combo_scroll(val, true)) {
+				op.total_level(op_id, *new_val);
+			}
+		};
+	}
+	void ym2612_edit::render_rate_scaling(const fm::operators::op_id &op_id) {
+		using oper = fm::operators;
+		dear::WithID(&op_id) && [this, &op_id] {
+			auto &op = selected_patch().operators;
+			const auto val = op.rate_scaling(op_id);
+			ImGui::SetNextItemWidth(-1);
+			dear::Combo{"##rate_scaling",  oper::string(val).data()} && [this, &op, &op_id, &val] {
+				for (const auto &current : fm::list<oper::rate_scaling_mode>()){
+					const bool is_selected = val == current;
+					if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
+						op.rate_scaling(op_id, current);
+					}
+
+					if (is_selected) {
+						ImGui::SetItemDefaultFocus();
+					}
+				}
+			};
+			if(const auto new_val = handle_combo_scroll(val)) {
+				op.rate_scaling(op_id, *new_val);
+			}
+		};
+	}
+	void ym2612_edit::render_attack_rate(const fm::operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
-		auto val = op.attack_rate(op_id);
-		ImGui::PushID(&op_id);
-		ImGui::SetNextItemWidth(-1);
-		if(ImGui::InputScalar("##attack_rate", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
-			op.attack_rate(op_id, val);
-		}
-		if(const auto new_val = handle_combo_scroll(val, true)) {
-			op.attack_rate(op_id, *new_val);
-		}
-		ImGui::PopID();
+		dear::WithID(&op_id) && [this, &op_id] {
+			auto &op = selected_patch().operators;
+			auto val = op.attack_rate(op_id);
+			ImGui::SetNextItemWidth(-1);
+			if(ImGui::InputScalar("##attack_rate", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
+				op.attack_rate(op_id, val);
+			}
+			if(const auto new_val = handle_combo_scroll(val, true)) {
+				op.attack_rate(op_id, *new_val);
+			}
+		};
 	}
-	void ym2612_edit::render_amplitude_modulation(fm::operators &op, const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_amplitude_modulation(const fm::operators::op_id &op_id) {
 		static constexpr std::array values = {
 			"Disabled",
 			"Enabled"
 		};
-		const auto val = op.amplitude_modulation(op_id);
-		ImGui::PushID(&op_id);
-		ImGui::SetNextItemWidth(-1);
-		dear::Combo{"##amplitude_modulation", val ? values[1] : values[0]} && [this, &op, &op_id, &val] {
-			for (const auto &current : values){
-				const bool current_bool = current == values[1];
-				const bool is_selected = val == current_bool;
-				if (ImGui::Selectable(current, is_selected)) {
-					op.amplitude_modulation(op_id, current_bool);
-				}
+		dear::WithID(&op_id) && [this, &op_id] {
+			auto &op = selected_patch().operators;
+			const auto val = op.amplitude_modulation(op_id);
+			ImGui::SetNextItemWidth(-1);
+			dear::Combo{"##amplitude_modulation", val ? values[1] : values[0]} && [this, &op, &op_id, &val] {
+				for (const auto &current : values){
+					const bool current_bool = current == values[1];
+					const bool is_selected = val == current_bool;
+					if (ImGui::Selectable(current, is_selected)) {
+						op.amplitude_modulation(op_id, current_bool);
+					}
 
-				if (is_selected) {
-					ImGui::SetItemDefaultFocus();
+					if (is_selected) {
+						ImGui::SetItemDefaultFocus();
+					}
 				}
+			};
+			using enum scroll_wheel_direction;
+			if(const auto new_val = handle_scroll(); new_val != neutral) {
+				op.amplitude_modulation(op_id, !val);
 			}
 		};
-		using enum scroll_wheel_direction;
-		if(const auto new_val = handle_scroll(); new_val != neutral) {
-			op.amplitude_modulation(op_id, !val);
-		}
-		ImGui::PopID();
 	}
-	void ym2612_edit::render_decay_rate(fm::operators &op, const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_decay_rate(const fm::operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
-		auto val = op.decay_rate(op_id);
-		ImGui::PushID(&op_id);
-		ImGui::SetNextItemWidth(-1);
-		if(ImGui::InputScalar("##decay_rate", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
-			op.decay_rate(op_id, val);
-		}
-		if(const auto new_val = handle_combo_scroll(val, true)) {
-			op.decay_rate(op_id, *new_val);
-		}
-		ImGui::PopID();
+		dear::WithID(&op_id) && [this, &op_id] {
+			auto &op = selected_patch().operators;
+			auto val = op.decay_rate(op_id);
+			ImGui::SetNextItemWidth(-1);
+			if(ImGui::InputScalar("##decay_rate", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
+				op.decay_rate(op_id, val);
+			}
+			if(const auto new_val = handle_combo_scroll(val, true)) {
+				op.decay_rate(op_id, *new_val);
+			}
+		};
 	}
-	void ym2612_edit::render_sustain_rate(fm::operators &op, const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_sustain_rate(const fm::operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
-		auto val = op.sustain_rate(op_id);
-		ImGui::PushID(&op_id);
-		ImGui::SetNextItemWidth(-1);
-		if(ImGui::InputScalar("##sustain_rate", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
-			op.sustain_rate(op_id, val);
-		}
-		if(const auto new_val = handle_combo_scroll(val, true)) {
-			op.sustain_rate(op_id, *new_val);
-		}
-		ImGui::PopID();
+		dear::WithID(&op_id) && [this, &op_id] {
+			auto &op = selected_patch().operators;
+			auto val = op.sustain_rate(op_id);
+			ImGui::SetNextItemWidth(-1);
+			if(ImGui::InputScalar("##sustain_rate", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
+				op.sustain_rate(op_id, val);
+			}
+			if(const auto new_val = handle_combo_scroll(val, true)) {
+				op.sustain_rate(op_id, *new_val);
+			}
+		};
 	}
-	void ym2612_edit::render_sustain_level(fm::operators &op, const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_sustain_level(const fm::operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
-		auto val = op.sustain_level(op_id);
-		ImGui::PushID(&op_id);
-		ImGui::SetNextItemWidth(-1);
-		if(ImGui::InputScalar("##sustain_level", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
-			op.sustain_level(op_id, val);
-		}
-		if(const auto new_val = handle_combo_scroll(val, true)) {
-			op.sustain_level(op_id, *new_val);
-		}
-		ImGui::PopID();
+		dear::WithID(&op_id) && [this, &op_id] {
+			auto &op = selected_patch().operators;
+			auto val = op.sustain_level(op_id);
+			ImGui::SetNextItemWidth(-1);
+			if(ImGui::InputScalar("##sustain_level", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
+				op.sustain_level(op_id, val);
+			}
+			if(const auto new_val = handle_combo_scroll(val, true)) {
+				op.sustain_level(op_id, *new_val);
+			}
+		};
 	}
-	void ym2612_edit::render_release_rate(fm::operators &op, const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_release_rate(const fm::operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
-		auto val = op.release_rate(op_id);
-		ImGui::PushID(&op_id);
-		ImGui::SetNextItemWidth(-1);
-		if(ImGui::InputScalar("##release_rate", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
-			op.release_rate(op_id, val);
-		}
-		if(const auto new_val = handle_combo_scroll(val, true)) {
-			op.release_rate(op_id, *new_val);
-		}
-		ImGui::PopID();
+		dear::WithID(&op_id) && [this, &op_id] {
+			auto &op = selected_patch().operators;
+			auto val = op.release_rate(op_id);
+			ImGui::SetNextItemWidth(-1);
+			if(ImGui::InputScalar("##release_rate", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
+				op.release_rate(op_id, val);
+			}
+			if(const auto new_val = handle_combo_scroll(val, true)) {
+				op.release_rate(op_id, *new_val);
+			}
+		};
 	}
-	void ym2612_edit::render_ssgeg(fm::operators &op, const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_ssgeg(const fm::operators::op_id &op_id) {
 		using oper = fm::operators;
-		const auto val = op.ssgeg(op_id);
-		ImGui::PushID(&op_id);
-		ImGui::SetNextItemWidth(-1);
-		dear::Combo{"##ssgeg", oper::string(val).data()} && [this, &op, &op_id, &val] {
-			for (const auto &current : fm::list<oper::ssgeg_mode>()){
-				const bool is_selected = val == current;
-				if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
-					op.ssgeg(op_id, current);
-				}
+		dear::WithID(&op_id) && [this, &op_id] {
+			auto &op = selected_patch().operators;
+			const auto val = op.ssgeg(op_id);
+			ImGui::SetNextItemWidth(-1);
+			dear::Combo{"##ssgeg", oper::string(val).data()} && [this, &op, &op_id, &val] {
+				for (const auto &current : fm::list<oper::ssgeg_mode>()){
+					const bool is_selected = val == current;
+					if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
+						op.ssgeg(op_id, current);
+					}
 
-				if (is_selected) {
-					ImGui::SetItemDefaultFocus();
+					if (is_selected) {
+						ImGui::SetItemDefaultFocus();
+					}
 				}
+			};
+			if(const auto new_val = handle_combo_scroll(val)) {
+				op.ssgeg(op_id, *new_val);
 			}
 		};
-		if(const auto new_val = handle_combo_scroll(val)) {
-			op.ssgeg(op_id, *new_val);
-		}
-		ImGui::PopID();
 	}
 
-	void ym2612_edit::render_ams(fm::operators &op) {
+	void ym2612_edit::render_ams() {
 		ImGui::TextUnformatted("AMS  ");
 		bool hovered = false;
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
@@ -597,6 +655,7 @@ namespace MID3SMPS {
 			"5.9"sv,
 			"11.8"sv
 		};
+		auto &op = selected_patch().operators;
 		const auto val = op.ams();
 		ImGui::SetNextItemWidth(-1);
 		dear::Combo{"##AMS value", strings[val].data()} && [this, &op] {
@@ -621,7 +680,7 @@ namespace MID3SMPS {
 			op.ams(*new_val);
 		}
 	}
-	void ym2612_edit::render_fms(fm::operators &op) {
+	void ym2612_edit::render_fms() {
 		ImGui::TextUnformatted("FMS  %");
 		bool hovered = false;
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
@@ -639,6 +698,7 @@ namespace MID3SMPS {
 			"\u00b140"sv,
 			"\u00b180"sv,
 		};
+		auto &op = selected_patch().operators;
 		const auto val = op.fms();
 		ImGui::SetNextItemWidth(-1);
 		dear::Combo{"##FMS value", strings[val].data()} && [this, &op] {
@@ -663,9 +723,10 @@ namespace MID3SMPS {
 			op.fms(*new_val);
 		}
 	}
-	void ym2612_edit::render_feedback(fm::operators &op) {
+	void ym2612_edit::render_feedback() {
 		ImGui::TextUnformatted("Feedback");
 		ImGui::TableNextColumn();
+		auto &op = selected_patch().operators;
 		const auto val = op.feedback();
 		using oper = fm::operators;
 		ImGui::SetNextItemWidth(-1);
@@ -686,9 +747,10 @@ namespace MID3SMPS {
 		}
 	}
 
-	void ym2612_edit::render_algorithm(fm::operators &op) {
+	void ym2612_edit::render_algorithm() {
 		ImGui::TextUnformatted("Algorithm");
 		ImGui::TableNextColumn();
+		auto &op = selected_patch().operators;
 		const auto val = op.algorithm();
 		using oper = fm::operators;
 		ImGui::SetNextItemWidth(-1);
@@ -709,19 +771,20 @@ namespace MID3SMPS {
 		}
 	}
 
-	void ym2612_edit::render_transposition(fm::operators &op) {
+	void ym2612_edit::render_transposition() {
 		ImGui::TextUnformatted("Transposition");
 		ImGui::TableNextColumn();
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo{"##Transposition value", "0 (Default)"} && [this, &op] {
-			(void)op;
+		dear::Combo{"##Transposition value", "0 (Default)"} && [this] {
+			// Todo
 		};
 	}
 
-	void ym2612_edit::render_registers(/*const*/ fm::operators &op, const std::uint_fast8_t current_row) const {
+	void ym2612_edit::render_registers(const std::uint_fast8_t current_row) const {
 		const std::uint_fast8_t offset = current_row * 8;
 		const std::uint_fast8_t max = current_row == 3 ? 6 : 8;
 		const auto width = ImGui::GetContentRegionAvail().x / 4;
+		auto &op = const_cast<fm::operators &>(selected_patch().operators); // InputScalar takes non-const pointer but can't actually write in this case
 		for(std::uint_fast8_t i = 0; i < max; i++) {
 			if(i == 4) {
 				ImGui::TableNextColumn();

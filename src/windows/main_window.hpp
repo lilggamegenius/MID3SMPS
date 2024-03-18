@@ -6,6 +6,7 @@
 
 #include "window.hpp"
 #include "containers/dirtyable.hpp"
+#include "containers/files/mapping.hpp"
 
 namespace fs = std::filesystem;
 
@@ -21,6 +22,7 @@ namespace MID3SMPS {
 		libremidi::reader::parse_result parse_result_{};
 
 		dirtyable<fs::path> mapping_path_{fs::path()};
+		mapping map_;
 
 		std::unique_ptr<ym2612_edit> ym2612_edit_{};
 
@@ -30,6 +32,8 @@ namespace MID3SMPS {
 		int midi_resolution_{};
 
 		mutable std::string status_;
+
+		void cached_wrap_text(const std::string &label, cached_key_t key, const std::string &emptyText);
 
 		void show_menu_bar();
 		void render_file_dialogs();

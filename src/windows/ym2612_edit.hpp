@@ -13,7 +13,6 @@ namespace MID3SMPS {
 			"%i"sv,
 			"%X"sv
 		};
-		friend class main_window;
 		enum class editor_mode : std::uint8_t {
 			digital,
 			analog
@@ -35,27 +34,48 @@ namespace MID3SMPS {
 		void render_editor_digital();
 		void render_editor_analog();
 
+		std::optional<std::pair<gyb::bank, ins_count_t>> selected_id = std::nullopt;
+		[[nodiscard]] constexpr bool has_selected_patch() const {
+			return selected_id.has_value();
+		}
+		[[nodiscard]] constexpr std::optional<gyb::bank> selected_bank_id() const {
+			if(!selected_id) {
+				return std::nullopt;
+			}
+			return selected_id->first;
+		}
+		[[nodiscard]] constexpr std::optional<ins_count_t> selected_patch_id() const {
+			if(!selected_id) {
+				return std::nullopt;
+			}
+			return selected_id->second;
+		}
+		[[nodiscard]] gyb::patch_order_t& selected_bank();
+		[[nodiscard]] const gyb::patch_order_t& selected_bank() const;
+		[[nodiscard]] fm::patch& selected_patch();
+		[[nodiscard]] const fm::patch& selected_patch() const;
+
 		void render_lfo();
 		void render_operator_headers();
 
-		void render_detune(fm::operators &op, const fm::operators::op_id &op_id);
-		void render_multiple(fm::operators &op, const fm::operators::op_id &op_id);
-		void render_total_level(fm::operators &op, const fm::operators::op_id &op_id);
-		void render_rate_scaling(fm::operators &op, const fm::operators::op_id &op_id);
-		void render_attack_rate(fm::operators &op, const fm::operators::op_id &op_id);
-		void render_amplitude_modulation(fm::operators &op, const fm::operators::op_id &op_id);
-		void render_decay_rate(fm::operators &op, const fm::operators::op_id &op_id);
-		void render_sustain_rate(fm::operators &op, const fm::operators::op_id &op_id);
-		void render_sustain_level(fm::operators &op, const fm::operators::op_id &op_id);
-		void render_release_rate(fm::operators &op, const fm::operators::op_id &op_id);
-		void render_ssgeg(fm::operators &op, const fm::operators::op_id &op_id);
+		void render_detune					(const fm::operators::op_id &op_id);
+		void render_multiple				(const fm::operators::op_id &op_id);
+		void render_total_level				(const fm::operators::op_id &op_id);
+		void render_rate_scaling			(const fm::operators::op_id &op_id);
+		void render_attack_rate				(const fm::operators::op_id &op_id);
+		void render_amplitude_modulation	(const fm::operators::op_id &op_id);
+		void render_decay_rate				(const fm::operators::op_id &op_id);
+		void render_sustain_rate			(const fm::operators::op_id &op_id);
+		void render_sustain_level			(const fm::operators::op_id &op_id);
+		void render_release_rate			(const fm::operators::op_id &op_id);
+		void render_ssgeg					(const fm::operators::op_id &op_id);
 
-		void render_ams(fm::operators &op);
-		void render_fms(fm::operators &op);
-		void render_feedback(fm::operators &op);
-		void render_algorithm(fm::operators &op);
-		void render_transposition(fm::operators &op);
-		void render_registers(/*const*/ fm::operators &op, std::uint_fast8_t current_row) const;
+		void render_ams();
+		void render_fms();
+		void render_feedback();
+		void render_algorithm();
+		void render_transposition();
+		void render_registers(std::uint_fast8_t current_row) const;
 
 		void scale_window();
 
@@ -70,8 +90,8 @@ namespace MID3SMPS {
 		[[nodiscard]] static std::optional<T> handle_combo_scroll(const T &value, bool invert = false);
 		template<typename T, std::enable_if_t<std::is_enum_v<T>, bool> = true>
 		[[nodiscard]] static std::optional<T> handle_combo_scroll(const T &enumeration);
-		[[nodiscard]] static ImVec2 calculate_child_size();
 
+		friend class main_window;
 		friend class window;
 		void render_impl();
 		void render_children_impl();

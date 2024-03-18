@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_map>
+
 template<typename Derived>
 class window {
 	[[nodiscard]] constexpr Derived& derived() {
@@ -9,6 +11,10 @@ class window {
 	[[nodiscard]] constexpr const Derived& derived() const {
 		return *static_cast<const Derived*>(this);
 	}
+
+protected:
+	using cached_key_t = const void*;
+	std::unordered_map<cached_key_t, std::string> cached_strings{};
 
 public:
 	void render() {
@@ -29,6 +35,20 @@ public:
 
 	[[nodiscard]] constexpr const char* window_title() const{
 		return derived().window_title_impl();
+	}
+
+	std::string& cache_string(const cached_key_t ptr, const std::string &str) {
+		auto [iter, _] = cached_strings.insert_or_assign(ptr, str);
+		return iter->second;
+	}
+
+	std::string& cache_string(const cached_key_t ptr, std::string &&str) {
+		auto [iter, _] = cached_strings.insert_or_assign(ptr, std::move(str));
+		return iter->second;
+	}
+
+	std::string& cache_string(const cached_key_t ptr) {
+		return cached_strings[ptr];
 	}
 
 protected:

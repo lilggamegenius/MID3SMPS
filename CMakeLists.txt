@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.26)
 project(MID3SMPS)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -10,7 +10,12 @@ set(CMAKE_UNITY_BUILD TRUE)
 find_package(fmt CONFIG REQUIRED)
 find_package(gcem CONFIG REQUIRED)
 #find_package(libremidi CONFIG REQUIRED)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	set_directory_properties(PROPERTIES COMPILE_DEFINITIONS _GLIBCXX_DEBUG)
+endif ()
 add_subdirectory(lib/libremidi)
+
+set(IMGUIWRAP_CXX_STANDARD 23)
 add_subdirectory(lib/imguiwrap)
 
 set_target_properties(imgui PROPERTIES UNITY_BUILD OFF)
@@ -84,6 +89,7 @@ endif()
 
 add_library(MID3SMPS STATIC
 		src/backend/window_handler.cpp
+		src/windows/window.hpp
 		src/windows/main_window.cpp src/windows/main_window.hpp
 		src/windows/ym2612_edit.cpp src/windows/ym2612_edit.hpp
 		src/containers/program_persistence.cpp src/containers/program_persistence.hpp
@@ -102,8 +108,7 @@ target_link_libraries(MID3SMPS imguiwrap ImGuiFileDialog fmt::fmt-header-only li
 target_compile_definitions(MID3SMPS
 		PUBLIC
 		# If the debug configuration pass the DEBUG define to the compiler
-		#$<$<CONFIG:Debug>:DEBUG _GLIBCXX_DEBUG>
-		$<$<CONFIG:Debug>:DEBUG>
+		$<$<CONFIG:Debug>:DEBUG _GLIBCXX_DEBUG>
 )
 
 add_executable(MID3SMPS_EXECUTABLE

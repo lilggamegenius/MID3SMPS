@@ -20,20 +20,8 @@ static const IGFD::FileDialogConfig default_file_dialog_config{
 };
 
 namespace MID3SMPS {
-	template<typename T>
-	void cached_wrap_text(const std::string &label, dirtyable<T> &variable, std::string &cache, const std::string &emptyText) {
-		if(variable.dirty()) {
-			if(!variable.has_value() || variable->empty()) {
-				cache = emptyText;
-			} else {
-				if constexpr(std::is_same_v<T, fs::path>) {
-					cache = variable->filename().string();
-				} else {
-					cache = variable->string();
-				}
-			}
-			variable.clearDirty();
-		}
+	void main_window::cached_wrap_text(const std::string &label, cached_key_t key, const std::string &emptyText) {
+		const auto &cache = cached_strings.insert({key, emptyText}).first->second; // Sets the cache to the default text if it doesn't already exist
 
 		const auto textWidth   = ImGui::CalcTextSize(cache.c_str()).x;
 		const auto labelLength = ImGui::CalcTextSize(label.c_str()).x;
@@ -69,14 +57,12 @@ namespace MID3SMPS {
 			const bool meets_min_height = windowHeight > minHeight;
 
 			using namespace std::literals;
-			static std::string midiPathCache;
-			cached_wrap_text("Loaded MIDI:"s, midi_path_, midiPathCache, "No MIDI loaded"s);
+			cached_wrap_text("Loaded MIDI: "s, &midi_path_, "No MIDI loaded"s);
 			if(meets_min_height) {
 				ImGui::NewLine();
 			}
 
-			static std::string bankPathCache;
-			cached_wrap_text("Loaded Bank:"s, mapping_path_, bankPathCache, "No bank loaded"s);
+			cached_wrap_text("Loaded Bank: "s, &map_.gyb(), "No bank loaded"s);
 			if(meets_min_height) {
 				ImGui::NewLine();
 			}
@@ -263,13 +249,17 @@ namespace MID3SMPS {
 				status_ = fmt::format("Invalid midi file");
 				fmt::print(stderr, "{}", status_);
 				return;
-			case libremidi::reader::incomplete: status_ = fmt::format("Midi file loading incomplete");
+			case libremidi::reader::incomplete:
+				status_ = fmt::format("Midi file loading incomplete");
 				break;
-			case libremidi::reader::complete: status_ = fmt::format("Midi file loading complete but not validated");
+			case libremidi::reader::complete:
+				status_ = fmt::format("Midi file loading complete but not validated");
 				break;
-			case libremidi::reader::validated: status_ = fmt::format("Midi file loaded and validated");
+			case libremidi::reader::validated:
+				status_ = fmt::format("Midi file loaded and validated");
 				break;
-			default: std::unreachable();
+			default:
+				std::unreachable();
 		}
 
 		midi_path_ = midi;
@@ -296,11 +286,15 @@ namespace MID3SMPS {
 
 	void main_window::open_mapping(fs::path &&map_path, bool set_persistence) {
 		try {
-			mapping map(map_path);
+			map_ = mapping(map_path);
 			status_ = fmt::format("Loaded {}", map_path.filename().string());
 			if(set_persistence) {
 				persistence->last_config_ = map_path;
 			}
+			if(ym2612_edit_ && fs::exists(map_.gyb())) {
+				ym2612_edit_->gyb_ = gyb{map_.gyb()};
+			}
+			cache_string(&map_.gyb(), map_.gyb().filename().string());
 			mapping_path_ = std::move(map_path);
 		} catch(const std::runtime_error &error) {
 			status_ = fmt::format("Failed to load map: {}", error.what());
@@ -317,8 +311,10 @@ namespace MID3SMPS {
 
 	void main_window::open_instrument_editor() {
 		if(!ym2612_edit_) {
-			[[maybe_unused]] const auto idle = handler.idling().get_override(); // override idle while loading, for speed
 			ym2612_edit_ = std::make_unique<ym2612_edit>();
+			if(fs::exists(map_.gyb())) {
+				ym2612_edit_->gyb_ = gyb{map_.gyb()};
+			}
 		} else {
 			ImGui::SetWindowFocus(ym2612_edit_->window_title());
 		}

@@ -415,12 +415,7 @@ namespace MID3SMPS::fm {
 	template<typename T>
 	struct list_helper {
 		using type = std::span<const T>;
-
-		[[nodiscard, gnu::const]] static constexpr auto list() -> type {
-			static constexpr std::array<T, 0> values{};
-			static_assert(false, "Not implimented");
-			return values;
-		}
+		[[nodiscard, gnu::const]] static constexpr auto list() -> type = delete;
 	};
 
 	template<>
