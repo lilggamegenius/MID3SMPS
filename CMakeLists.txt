@@ -23,11 +23,15 @@ set_target_properties(imgui PROPERTIES UNITY_BUILD OFF)
 add_library(ImGuiFileDialog lib/ImGuiFileDialog/ImGuiFileDialog.cpp)
 target_include_directories(ImGuiFileDialog SYSTEM PRIVATE lib/imguiwrap/vendor/imgui/src)
 target_compile_options(ImGuiFileDialog PRIVATE "-w") # Disable warnings since its not our project to maintain
+target_compile_options(ImGuiFileDialog PRIVATE -w) # Disable warnings since its not our project to maintain
 
 if(MSVC)
 	# Force to always compile with W4
 	set(WARNING_FLAGS
 			/W4
+	)
+	set(OPTIMIZATION_FLAGS
+			/O2
 	)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
 	set(WARNING_FLAGS
@@ -48,8 +52,9 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
 			-Wredundant-decls   # Warn about multiple declarations of the same object.
 			-Wshadow    # Warn when one variable shadows another # Might disable this one
 			-Wsign-conversion   # Warn for implicit type conversions between signed and unsigned integers.
+			-Wconversion    # Ditto
 			-Wsign-promo    # Warn when overload promotes from unsigned to signed.
-			-Wstrict-overflow=5 # Warn about optimizations that assume that signed overflow is undefined.
+			-Wstrict-overflow=2 # Warn about optimizations that assume that signed overflow is undefined.
 			-Wswitch-default    # Warn about enumerated switches missing a "default:" statement.
 			-Wundef # Warn if an undefined macro is used in an #if directive.
 			-Wzero-as-null-pointer-constant # Warn when a literal '0' is used as null pointer.
@@ -61,9 +66,9 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
 	if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 		set(WARNING_FLAGS ${WARNING_FLAGS}
 				#-fhardened
-				-D_FORTIFY_SOURCE=3
-				-D_GLIBCXX_ASSERTIONS
-				-ftrivial-auto-var-init=zero
+				#-D_FORTIFY_SOURCE=3
+				-D_GLIBCXX_DEBUG
+				#-ftrivial-auto-var-init=zero
 				-fPIE  -pie  -Wl,-z,relro,-z,now-
 				-fstack-protector-strong
 				-fstack-clash-protection
@@ -73,10 +78,19 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
 				-Wstrict-null-sentinel  # Warn about un-casted NULL used as sentinel.
 				-Wuseless-cast  # Warn about useless casts.
 		)
+	else () # Clang
+		set(WARNING_FLAGS ${WARNING_FLAGS}
+				-Wno-error=unknown-attributes # clang 18 doesn't support [[assume()]] yet, so its considered unknown
+		)
 	endif()
+	set(OPTIMIZATION_FLAGS
+			-Ofast
+	)
 else()
 	message(WARNING "CMake flags for compiler aren't set for compiler ${CMAKE_CXX_COMPILER_ID}")
 endif()
+
+add_compile_options(${OPTIMIZATION_FLAGS})
 
 option(FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
 if(${FORCE_COLORED_OUTPUT})
@@ -108,7 +122,7 @@ target_link_libraries(MID3SMPS imguiwrap ImGuiFileDialog fmt::fmt-header-only li
 target_compile_definitions(MID3SMPS
 		PUBLIC
 		# If the debug configuration pass the DEBUG define to the compiler
-		$<$<CONFIG:Debug>:DEBUG _GLIBCXX_DEBUG>
+		$<$<CONFIG:Debug>:DEBUG>
 )
 
 add_executable(MID3SMPS_EXECUTABLE

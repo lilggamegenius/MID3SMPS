@@ -1,27 +1,26 @@
 #pragma once
 
-#include <filesystem>
 #include <libremidi/libremidi.hpp>
 #include <libremidi/reader.hpp>
+#include <filesystem>
 
 #include "window.hpp"
-#include "containers/dirtyable.hpp"
+#include "ym2612_edit.hpp"
 #include "containers/files/mapping.hpp"
 
 namespace fs = std::filesystem;
 
 namespace MID3SMPS {
-	class ym2612_edit;
 	class main_window : public window<main_window>{
 		bool stay_open_ = true;
 
-		dirtyable<fs::path> midi_path_{fs::path()};
-		dirtyable<fs::path> last_smps_path_{fs::path()};
+		fs::path midi_path_{};
+		fs::path last_smps_path_{};
 
 		libremidi::reader reader_{};
 		libremidi::reader::parse_result parse_result_{};
 
-		dirtyable<fs::path> mapping_path_{fs::path()};
+		fs::path mapping_path_{};
 		mapping map_;
 
 		std::unique_ptr<ym2612_edit> ym2612_edit_{};

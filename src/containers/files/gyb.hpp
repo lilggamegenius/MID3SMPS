@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <vector>
 #include <unordered_map>
 #include <span>
@@ -9,6 +10,7 @@
 
 namespace MID3SMPS {
 	using ins_count_t = std::uint16_t;
+	namespace fs = std::filesystem;
 	struct gyb {
 		enum class lfo : std::uint8_t{
 			off,

@@ -2,8 +2,9 @@
 
 #include <array>
 #include <cstdint>
-#include <fmt/core.h>
 #include <stdexcept>
+#include <utility>
+#include <fmt/core.h>
 
 namespace MID3SMPS::fm {
 	using namespace std::string_view_literals;
@@ -252,7 +253,7 @@ namespace MID3SMPS::fm {
 
 		[[nodiscard, gnu::pure]] constexpr register_t ams() const {
 			const auto &lfo_sensitivity_reg = reg(op_id::op3, 7);
-			auto val                        = lfo_sensitivity_reg & masks::ams;
+			std::uint8_t val                        = lfo_sensitivity_reg & masks::ams;
 			val >>= 4;
 			return val;
 		}

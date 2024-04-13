@@ -31,16 +31,16 @@ void window_handler::main_loop_init() {
 	reload_fonts();
 }
 
-/*consteval*/ ImFontConfig window_handler::generate_font_config() {
+[[nodiscard]] /*consteval*/ ImFontConfig window_handler::generate_font_config() {
 	ImFontConfig cfg;
 	cfg.OversampleH = cfg.OversampleV = 3;
 	return cfg;
 }
 
-void window_handler::reload_fonts(float pixel_size) {
+void window_handler::reload_fonts(const float pixel_size) {
 	const auto fonts = ImGui::GetIO().Fonts;
 	fonts->ClearFonts();
-	static /*constexpr*/ ImFontConfig cfg = generate_font_config();
+	static /*constexpr*/ auto cfg = generate_font_config();
 	#define FOLDER_PATH "data/fonts/" // macro because there's no way to concat strings at compile-time
 	main_font_ = fonts->AddFontFromFileTTF(FOLDER_PATH "SourceCodePro-Semibold.ttf", pixel_size, &cfg);
 	main_font_bold_ = fonts->AddFontFromFileTTF(FOLDER_PATH "SourceCodePro-Black.ttf", pixel_size, &cfg);

@@ -82,7 +82,7 @@ public:
 	void reload_fonts(float pixel_size = 15.f);
 
 private:
-	/*consteval*/ static ImFontConfig generate_font_config();
+	[[nodiscard]] /*consteval*/ static ImFontConfig generate_font_config();
 };
 
 namespace MID3SMPS {

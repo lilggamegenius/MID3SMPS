@@ -5,8 +5,10 @@
 #include <thread>
 #include <fmt/core.h>
 
-#include "ym2612_edit.hpp"
 #include "main_window.hpp"
+
+#include "backend/window_handler.hpp"
+
 #include "containers/program_persistence.hpp"
 #include "containers/files/mapping.hpp"
 
@@ -29,8 +31,7 @@ namespace MID3SMPS {
 		const auto windowWidth = ImGui::GetWindowSize().x;
 
 		dear::TextUnformatted(label);
-		const auto combined = textWidth + labelLength + 30;
-		if(combined <= windowWidth) {
+		if(const auto combined = textWidth + labelLength + 30; combined <= windowWidth) {
 			ImGui::SameLine();
 		}
 		dear::TextUnformatted(cache);
@@ -40,7 +41,7 @@ namespace MID3SMPS {
 		static bool first_frame_completed = false;
 		if(!first_frame_completed) [[unlikely]] {
 			if(!persistence->empty()) {
-				fs::path map(persistence->last_config_);
+				auto map(persistence->last_config_);
 				open_mapping(std::move(map), false);
 			}
 		}
@@ -128,8 +129,8 @@ namespace MID3SMPS {
 							open_midi(fs::path(*current_path));
 						}
 						#else
-						if(ImGui::MenuItem(iter->c_str())) {
-							openMidi(fs::path(*iter));
+						if(ImGui::MenuItem(current_path->c_str())) {
+							open_midi(fs::path(*current_path));
 						}
 						#endif
 						ImGui::PopID();
@@ -206,7 +207,7 @@ namespace MID3SMPS {
 	void main_window::render_file_dialogs() {
 		if(ImGuiFileDialog::Instance()->Display(OpenMidi)) {
 			if(ImGuiFileDialog::Instance()->IsOk()) {
-				if(fs::path path = get_path_from_file_dialog(); fs::exists(path)) {
+				if(auto path = get_path_from_file_dialog(); fs::exists(path)) {
 					open_midi(std::move(path));
 				} else {
 					status_ = fmt::format("{} is not a valid path", path.string());
@@ -223,7 +224,7 @@ namespace MID3SMPS {
 		}
 		if(ImGuiFileDialog::Instance()->Display(OpenMapping)) {
 			if(ImGuiFileDialog::Instance()->IsOk()) {
-				if(fs::path path = get_path_from_file_dialog(); fs::exists(path)) {
+				if(auto path = get_path_from_file_dialog(); fs::exists(path)) {
 					open_mapping(std::move(path));
 				} else {
 					status_ = fmt::format("{} is not a valid path", path.string());
@@ -263,7 +264,7 @@ namespace MID3SMPS {
 		}
 
 		midi_path_ = midi;
-		midi_path_.markDirty();
+		cache_string(&midi_path_, midi_path_.filename().string());
 		persistence->insert_recent(std::move(midi));
 	}
 
@@ -271,7 +272,7 @@ namespace MID3SMPS {
 		if(save_as) {
 			ImGuiFileDialog::Instance()->OpenDialog(SaveSmps, "Select a destination", ".bin", default_file_dialog_config);
 		} else {
-			std::thread(&main_window::save_smps, this, *last_smps_path_).detach();
+			std::thread(&main_window::save_smps, this, last_smps_path_).detach();
 		}
 	}
 
@@ -281,7 +282,7 @@ namespace MID3SMPS {
 	}
 
 	void main_window::save_smps(const fs::path &path) {
-		last_smps_path_ = path; // Dirty is set automatically if path is different
+		last_smps_path_ = path;
 	}
 
 	void main_window::open_mapping(fs::path &&map_path, bool set_persistence) {

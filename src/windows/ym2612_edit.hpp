@@ -28,6 +28,7 @@ namespace MID3SMPS {
 		float last_space_remaining = 0;
 
 		gyb gyb_{};
+		bool diry_ = false;
 
 		void render_menu_bar();
 		void render_patch_selection();
@@ -54,6 +55,10 @@ namespace MID3SMPS {
 		[[nodiscard]] const gyb::patch_order_t& selected_bank() const;
 		[[nodiscard]] fm::patch& selected_patch();
 		[[nodiscard]] const fm::patch& selected_patch() const;
+
+		void render_patch_selector();
+		void render_patch_mappings();
+		void render_oscilloscope();
 
 		void render_lfo();
 		void render_operator_headers();

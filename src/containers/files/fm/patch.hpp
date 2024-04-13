@@ -26,10 +26,10 @@ namespace MID3SMPS {
 		struct patch {
 			std::string name{};
 			//std::uint16_t total_size{};
-			operators operators{};
+			fm::operators operators{};
 			std::int8_t instrument_transposition{};
 			std::uint8_t default_drum_note{};
-			options options{};
+			fm::options options{};
 			chords chord_notes{};
 
 			constexpr patch()									= default;
@@ -39,9 +39,9 @@ namespace MID3SMPS {
 			constexpr patch& operator=(patch &&other) noexcept  = default;
 
 		private:
-			constexpr void load_v1(std::span<const std::uint8_t> data) { (void)data; throw std::runtime_error("Version 1 FM data not yet supported"); }
-			constexpr void load_v2(std::span<const std::uint8_t> data) { (void)data; throw std::runtime_error("Version 2 FM data not yet supported"); }
-			constexpr void load_v3(std::span<const std::uint8_t> data);
+			void load_v1(std::span<const std::uint8_t> data) { (void)data; throw std::runtime_error("Version 1 FM data not yet supported"); }
+			void load_v2(std::span<const std::uint8_t> data) { (void)data; throw std::runtime_error("Version 2 FM data not yet supported"); }
+			void load_v3(std::span<const std::uint8_t> data);
 
 		public:
 			constexpr patch(version version, std::span<const std::uint8_t> data) {

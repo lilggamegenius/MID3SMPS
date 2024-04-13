@@ -2,9 +2,14 @@
 
 #include <imguiwrap.dear.h>
 #include <imgui.h>
+#include <execution>
+#include <imgui_internal.h>
+#include <backend/window_handler.hpp>
 
 #include "containers/files/gyb.hpp"
 #include "containers/files/fm/patch.hpp"
+
+static constexpr auto default_hover_flags = ImGuiHoveredFlags_AllowWhenDisabled | ImGuiHoveredFlags_ForTooltip;
 
 namespace MID3SMPS {
 	template<std::size_t max_value, std::integral T, std::enable_if_t<!std::is_enum_v<T>, bool>>
@@ -113,8 +118,8 @@ namespace MID3SMPS {
 	}
 
 	void ym2612_edit::render_menu_bar() {
-		dear::WithStyleVar(ImGuiStyleVar_ItemSpacing, {8, 0}) && [this] {
-			dear::MenuBar{} && [this] {
+		dear::WithStyleVar(ImGuiStyleVar_ItemSpacing, {8, 0}) && [] {
+			dear::MenuBar{} && [] {
 				if(ImGui::MenuItem("Open new bank")) {}
 				if(ImGui::MenuItem("Save bank")) {}
 				if(ImGui::MenuItem("Bank switch")) {}
@@ -127,52 +132,93 @@ namespace MID3SMPS {
 	void ym2612_edit::render_patch_selection() {
 		dear::WithStyleVar style(ImGuiStyleVar_WindowPadding, {0, 0});
 		auto child_size = ImGui::GetContentRegionAvail();
-		child_size.y *= .45;
+		child_size.y *= .45f;
 		dear::Child{"Patch Info", child_size, ImGuiChildFlags_ResizeY} && [this, &child_size] {
 			dear::Child("Patch selector", {child_size.x / 4, -1}, ImGuiChildFlags_Border) && [this] {
-				static constexpr ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-
-				for(const auto &[bank, data] : gyb_.patches_order) {
-					const auto &[name, ids] = data;
-
-					auto category_flags = base_flags;
-					if(selected_bank_id() == bank) {
-						category_flags |= ImGuiTreeNodeFlags_Selected;
-					}
-					dear::TreeNodeEx(name.c_str(), category_flags) && [this, &ids, &bank] {
-						ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
-						for(const auto &id : ids) {
-							const auto &patch = gyb_.patches[id];
-							auto patch_flags = base_flags;
-							if(selected_patch_id() == id) {
-								patch_flags |= ImGuiTreeNodeFlags_Selected;
-							}
-							patch_flags |= ImGuiTreeNodeFlags_Leaf;
-							dear::TreeNodeEx(patch.name.c_str(), patch_flags) && [this, &bank, &id, &patch] {
-								if(ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-									selected_id = {bank, id};
-								}
-								dear::ItemTooltip() && [&patch] {
-									ImGui::TextUnformatted(patch.name.c_str());
-								};
-							};
-						}
-						ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
-					};
-				}
+				render_patch_selector();
 			};
 			ImGui::SameLine();
 			dear::Child("Mapping selector", {child_size.x / 4, -1}, ImGuiChildFlags_Border) && [this] {
-
+				render_patch_mappings();
 			};
 			ImGui::SameLine();
 			dear::Child("Oscilloscope", {child_size.x / 2, -1}, ImGuiChildFlags_Border) && [this] {
-				static constexpr std::array test = {
-					0.f, 127.f, 64.f, 50.f, 0.f, 0.f
-				};
-				ImGui::PlotLines("##Envelope", test.data(), test.size(), 0, nullptr, 0.f, std::numeric_limits<std::int8_t>::max(), {-1, -1});
+				render_oscilloscope();
 			};
 		};
+	}
+
+	void ym2612_edit::render_patch_selector() {
+		static constexpr ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+
+		for(const auto &[bank, data] : gyb_.patches_order) {
+			const auto &[name, ids] = data;
+
+			auto category_flags = base_flags;
+			if(selected_bank_id() == bank) {
+				category_flags |= ImGuiTreeNodeFlags_Selected;
+			}
+			dear::TreeNodeEx(name.c_str(), category_flags) && [this, &ids, &bank] {
+				ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
+				for(const auto &id : ids) {
+					const auto &patch = gyb_.patches[id];
+					auto patch_flags = base_flags;
+					if(selected_patch_id() == id) {
+						patch_flags |= ImGuiTreeNodeFlags_Selected;
+					}
+					patch_flags |= ImGuiTreeNodeFlags_Leaf;
+					dear::TreeNodeEx(patch.name.c_str(), patch_flags) && [this, &bank, &id, &patch] {
+						if(ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+							selected_id = {bank, id};
+						}
+						dear::ItemTooltip() && [&patch] {
+							ImGui::TextUnformatted(patch.name.c_str());
+						};
+					};
+				}
+				ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
+			};
+		}
+	}
+	void ym2612_edit::render_patch_mappings() {}
+
+	template<typename T, typename R = float>
+	constexpr R normalize(const T &val, const R &max) requires std::floating_point<R> && (std::integral<T> || std::floating_point<R>){
+		return static_cast<R>(val) / max;
+	}
+
+	template<typename T>
+	constexpr void grow_and_insert(std::vector<T> &vector, const std::size_t &idx, const T &value) { // todo: forward value type
+		while(vector.size() <= idx) {
+			vector.emplace_back();
+		}
+		vector[idx] = value;
+	}
+
+	void ym2612_edit::render_oscilloscope() {
+		static std::vector<float> adsr_data = {};
+		if(!has_selected_patch()) {
+			std::fill(std::execution::par_unseq, adsr_data.begin(), adsr_data.end(), 0);
+		} else {
+			const auto &operators = selected_patch().operators;
+			const auto id = fm::operators::op_id::op4;
+			if(operators.attack_rate(id) == 0) {
+				goto skip_render;
+			}
+			float level = 0;
+			{
+				const float tl = normalize(127 - operators.total_level(id), 127.f);
+				float step = normalize(operators.attack_rate(id), 31.f);
+				step *= tl;
+				for(std::size_t idx = 0; level < tl; idx++) {
+					level = std::min(level + step, tl);
+					grow_and_insert(adsr_data, idx, level);
+				}
+			}
+		}
+
+	skip_render:
+		ImGui::PlotLines("##Envelope", adsr_data.data(), static_cast<int>(adsr_data.size()), 0, nullptr, 0.f, 1.f, {-1, -1});
 	}
 
 	void ym2612_edit::render_editor_digital() {
@@ -400,7 +446,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_lfo() {
 		ImGui::TextUnformatted("LFO  ");
 		bool hovered = false;
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
+		if (ImGui::IsItemHovered(default_hover_flags)){
 			hovered = true;
 		}
 		ImGui::SameLine();
@@ -418,7 +464,7 @@ namespace MID3SMPS {
 				}
 			}
 		};
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
+		if (ImGui::IsItemHovered(default_hover_flags)){
 			hovered = true;
 		}
 		dear::Tooltip{hovered} && [] {
@@ -451,7 +497,7 @@ namespace MID3SMPS {
 			ImGui::SetNextItemWidth(-1);
 			auto &op = selected_patch().operators;
 			const auto val = op.detune(op_id);
-			dear::Combo{"##detune", oper::string(val).data()} && [this, &op, &op_id, &val] {
+			dear::Combo{"##detune", oper::string(val).data()} && [&op, &op_id, &val] {
 				for (const auto &current : fm::list<oper::detune_mode>()){
 					const bool is_selected = val == current;
 					if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
@@ -502,7 +548,7 @@ namespace MID3SMPS {
 			auto &op = selected_patch().operators;
 			const auto val = op.rate_scaling(op_id);
 			ImGui::SetNextItemWidth(-1);
-			dear::Combo{"##rate_scaling",  oper::string(val).data()} && [this, &op, &op_id, &val] {
+			dear::Combo{"##rate_scaling",  oper::string(val).data()} && [&op, &op_id, &val] {
 				for (const auto &current : fm::list<oper::rate_scaling_mode>()){
 					const bool is_selected = val == current;
 					if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
@@ -542,7 +588,7 @@ namespace MID3SMPS {
 			auto &op = selected_patch().operators;
 			const auto val = op.amplitude_modulation(op_id);
 			ImGui::SetNextItemWidth(-1);
-			dear::Combo{"##amplitude_modulation", val ? values[1] : values[0]} && [this, &op, &op_id, &val] {
+			dear::Combo{"##amplitude_modulation", val ? values[1] : values[0]} && [&op, &op_id, &val] {
 				for (const auto &current : values){
 					const bool current_bool = current == values[1];
 					const bool is_selected = val == current_bool;
@@ -623,7 +669,7 @@ namespace MID3SMPS {
 			auto &op = selected_patch().operators;
 			const auto val = op.ssgeg(op_id);
 			ImGui::SetNextItemWidth(-1);
-			dear::Combo{"##ssgeg", oper::string(val).data()} && [this, &op, &op_id, &val] {
+			dear::Combo{"##ssgeg", oper::string(val).data()} && [&op, &op_id, &val] {
 				for (const auto &current : fm::list<oper::ssgeg_mode>()){
 					const bool is_selected = val == current;
 					if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
@@ -644,7 +690,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_ams() {
 		ImGui::TextUnformatted("AMS  ");
 		bool hovered = false;
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
+		if (ImGui::IsItemHovered(default_hover_flags)){
 			hovered = true;
 		}
 		ImGui::SameLine();
@@ -658,7 +704,7 @@ namespace MID3SMPS {
 		auto &op = selected_patch().operators;
 		const auto val = op.ams();
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo{"##AMS value", strings[val].data()} && [this, &op] {
+		dear::Combo{"##AMS value", strings[val].data()} && [&op] {
 			for (std::size_t i = 0; i < oper::ams_values.size(); i++){
 				const bool is_selected = op.ams() == i;
 				if (ImGui::Selectable(strings[i].data(), is_selected)) {
@@ -670,7 +716,7 @@ namespace MID3SMPS {
 				}
 			}
 		};
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
+		if (ImGui::IsItemHovered(default_hover_flags)){
 			hovered = true;
 		}
 		dear::Tooltip{hovered} && [] {
@@ -683,7 +729,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_fms() {
 		ImGui::TextUnformatted("FMS  %");
 		bool hovered = false;
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
+		if (ImGui::IsItemHovered(default_hover_flags)){
 			hovered = true;
 		}
 		ImGui::SameLine();
@@ -701,7 +747,7 @@ namespace MID3SMPS {
 		auto &op = selected_patch().operators;
 		const auto val = op.fms();
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo{"##FMS value", strings[val].data()} && [this, &op] {
+		dear::Combo{"##FMS value", strings[val].data()} && [&op] {
 			for (std::size_t i = 0; i < oper::fms_values.size(); i++){
 				const bool is_selected = op.fms() == i;
 				if (ImGui::Selectable(strings[i].data(), is_selected)) {
@@ -713,7 +759,7 @@ namespace MID3SMPS {
 				}
 			}
 		};
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
+		if (ImGui::IsItemHovered(default_hover_flags)){
 			hovered = true;
 		}
 		dear::Tooltip{hovered} && [] {
@@ -730,7 +776,7 @@ namespace MID3SMPS {
 		const auto val = op.feedback();
 		using oper = fm::operators;
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo{"##Feedback value", oper::string(val).data()} && [this, &op, &val] {
+		dear::Combo{"##Feedback value", oper::string(val).data()} && [&op, &val] {
 			for (const auto &current : fm::list<oper::feedback_mode>()){
 				const bool is_selected = val == current;
 				if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
@@ -754,7 +800,7 @@ namespace MID3SMPS {
 		const auto val = op.algorithm();
 		using oper = fm::operators;
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo{"##Algorithm value", oper::string(val).data()} && [this, &op, &val] {
+		dear::Combo{"##Algorithm value", oper::string(val).data()} && [&op, &val] {
 			for (const auto &current : fm::list<oper::algorithm_mode>()){
 				const bool is_selected = val == current;
 				if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
@@ -775,7 +821,7 @@ namespace MID3SMPS {
 		ImGui::TextUnformatted("Transposition");
 		ImGui::TableNextColumn();
 		ImGui::SetNextItemWidth(-1);
-		dear::Combo{"##Transposition value", "0 (Default)"} && [this] {
+		dear::Combo{"##Transposition value", "0 (Default)"} && [] {
 			// Todo
 		};
 	}

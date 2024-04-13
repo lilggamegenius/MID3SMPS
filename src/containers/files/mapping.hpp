@@ -18,7 +18,7 @@ namespace MID3SMPS {
 			return gyb_;
 		}
 
-		constexpr void gyb(const fs::path &gyb) {
+		void gyb(const fs::path &gyb) {
 			gyb_ = gyb;
 		}
 
@@ -26,7 +26,7 @@ namespace MID3SMPS {
 			return dac_map_;
 		}
 
-		constexpr void dac_map(const fs::path &dac_map) {
+		void dac_map(const fs::path &dac_map) {
 			dac_map_ = dac_map;
 		}
 
@@ -34,7 +34,7 @@ namespace MID3SMPS {
 			return dac_list_;
 		}
 
-		constexpr void dac_list(const fs::path &dac_list) {
+		void dac_list(const fs::path &dac_list) {
 			dac_list_ = dac_list;
 		}
 
@@ -42,38 +42,38 @@ namespace MID3SMPS {
 			return psg_list_;
 		}
 
-		constexpr void psg_list(const fs::path &psg_list) {
+		void psg_list(const fs::path &psg_list) {
 			psg_list_ = psg_list;
 		}
 
 		// boilerplate
-		constexpr mapping() = default;
-		constexpr mapping(const mapping &map) {
+		mapping() = default;
+		mapping(const mapping &map) {
 			gyb_		= map.gyb_;
 			dac_map_	= map.dac_map_;
 			dac_list_	= map.dac_list_;
 			psg_list_	= map.psg_list_;
 		}
-		constexpr mapping(mapping &&map) noexcept {
+		mapping(mapping &&map) noexcept {
 			gyb_		= std::move(map.gyb_);
 			dac_map_	= std::move(map.dac_map_);
 			dac_list_	= std::move(map.dac_list_);
 			psg_list_	= std::move(map.psg_list_);
 		}
-		constexpr mapping &operator=(const mapping &map) { // NOLINT(*-use-equals-default)
+		mapping &operator=(const mapping &map) { // NOLINT(*-use-equals-default)
 			gyb_		= map.gyb_;
 			dac_map_	= map.dac_map_;
 			dac_list_	= map.dac_list_;
 			psg_list_	= map.psg_list_;
 			return *this;
 		}
-		constexpr mapping &operator=(mapping &&map) noexcept { // NOLINT(*-use-equals-default)
+		mapping &operator=(mapping &&map) noexcept { // NOLINT(*-use-equals-default)
 			gyb_		= std::move(map.gyb_);
 			dac_map_	= std::move(map.dac_map_);
 			dac_list_	= std::move(map.dac_list_);
 			psg_list_	= std::move(map.psg_list_);
 			return *this;
 		}
-		constexpr ~mapping() = default;
+		~mapping() = default;
 	};
 }
