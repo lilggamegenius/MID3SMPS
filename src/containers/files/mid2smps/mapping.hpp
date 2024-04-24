@@ -4,7 +4,7 @@
 
 namespace fs = std::filesystem;
 
-namespace MID3SMPS {
+namespace MID3SMPS::M2S {
 	class mapping {
 		fs::path gyb_{};
 		fs::path dac_map_{};

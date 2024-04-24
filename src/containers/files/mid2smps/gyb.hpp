@@ -6,10 +6,12 @@
 #include <unordered_map>
 #include <span>
 
+#include "helpers/list_helper.hpp"
 #include "fm/patch.hpp"
 
-namespace MID3SMPS {
-	using ins_count_t = std::uint16_t;
+namespace MID3SMPS::M2S {
+	using ins_key_t = std::uint16_t;
+	using bank_key_t = std::uint16_t;
 	namespace fs = std::filesystem;
 	struct gyb {
 		enum class lfo : std::uint8_t{
@@ -34,24 +36,27 @@ namespace MID3SMPS {
 			48.1,
 			72.2
 		};
-		enum bank {
+		enum bank : bank_key_t{
 			melodic,
 			drum
 		};
 		lfo default_LFO_speed{};
-		using patch_container_t = std::unordered_map<ins_count_t, fm::patch>;
-		using patch_order_t = std::vector<ins_count_t>;
+		using patch_container_t = std::unordered_map<ins_key_t, fm::patch>;
+		using patch_order_t = std::vector<ins_key_t>;
 		patch_container_t patches;
 		std::unordered_map<bank, std::pair<std::string, patch_order_t>> patches_order;
 
-		[[nodiscard]] ins_count_t new_unique_id() const {
-			static ins_count_t current_id = 0; // Todo: make into member variable
+	private:
+		mutable ins_key_t current_id = 0;
+
+		[[nodiscard]] ins_key_t new_unique_id() const {
 			while(patches.contains(current_id)) {
 				++current_id;
 			}
 			return current_id;
 		}
 
+	public:
 		template<typename... Args>
 		fm::patch& add_patch(bank selected_bank, Args&&... args) {
 			const auto id = new_unique_id();
@@ -95,28 +100,27 @@ namespace MID3SMPS {
 			}
 		}
 	};
-
-
-	template<>
-	struct fm::list_helper<gyb::lfo> {
-		using type = std::span<const gyb::lfo, 9>;
-
-		[[nodiscard, gnu::const]] static constexpr type list() {
-			static constexpr std::array values = {
-				gyb::lfo::off,
-				gyb::lfo::mode0,
-				gyb::lfo::mode1,
-				gyb::lfo::mode2,
-				gyb::lfo::mode3,
-				gyb::lfo::mode4,
-				gyb::lfo::mode5,
-				gyb::lfo::mode6,
-				gyb::lfo::mode7
-			};
-			return values;
-		}
-	};
 }
+
+template<>
+struct MID3SMPS::list_helper<MID3SMPS::M2S::gyb::lfo> {
+	using type = std::span<const M2S::gyb::lfo, 9>;
+	static constexpr std::array values = {
+		M2S::gyb::lfo::off,
+		M2S::gyb::lfo::mode0,
+		M2S::gyb::lfo::mode1,
+		M2S::gyb::lfo::mode2,
+		M2S::gyb::lfo::mode3,
+		M2S::gyb::lfo::mode4,
+		M2S::gyb::lfo::mode5,
+		M2S::gyb::lfo::mode6,
+		M2S::gyb::lfo::mode7
+	};
+
+	[[nodiscard, gnu::const]] static constexpr type list() {
+		return values;
+	}
+};
 
 /*
 GYB Version 1/2

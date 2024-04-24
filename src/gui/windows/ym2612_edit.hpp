@@ -2,9 +2,9 @@
 
 #include <string_view>
 
-#include "windows/window.hpp"
-#include "containers/files/gyb.hpp"
-#include "containers/files/fm/operators.hpp"
+#include "gui/windows/window.hpp"
+#include "containers/files/mid2smps/gyb.hpp"
+#include "containers/chips/ym2612/operators.hpp"
 
 namespace MID3SMPS {
 	using namespace std::string_view_literals;
@@ -27,7 +27,7 @@ namespace MID3SMPS {
 		}
 		float last_space_remaining = 0;
 
-		gyb gyb_{};
+		M2S::gyb gyb_{};
 		bool diry_ = false;
 
 		void render_menu_bar();
@@ -35,26 +35,26 @@ namespace MID3SMPS {
 		void render_editor_digital();
 		void render_editor_analog();
 
-		std::optional<std::pair<gyb::bank, ins_count_t>> selected_id = std::nullopt;
+		std::optional<std::pair<M2S::gyb::bank, M2S::ins_key_t>> selected_id = std::nullopt;
 		[[nodiscard]] constexpr bool has_selected_patch() const {
 			return selected_id.has_value();
 		}
-		[[nodiscard]] constexpr std::optional<gyb::bank> selected_bank_id() const {
+		[[nodiscard]] constexpr std::optional<M2S::gyb::bank> selected_bank_id() const {
 			if(!selected_id) {
 				return std::nullopt;
 			}
 			return selected_id->first;
 		}
-		[[nodiscard]] constexpr std::optional<ins_count_t> selected_patch_id() const {
+		[[nodiscard]] constexpr std::optional<M2S::ins_key_t> selected_patch_id() const {
 			if(!selected_id) {
 				return std::nullopt;
 			}
 			return selected_id->second;
 		}
-		[[nodiscard]] gyb::patch_order_t& selected_bank();
-		[[nodiscard]] const gyb::patch_order_t& selected_bank() const;
-		[[nodiscard]] fm::patch& selected_patch();
-		[[nodiscard]] const fm::patch& selected_patch() const;
+		[[nodiscard]] M2S::gyb::patch_order_t& selected_bank();
+		[[nodiscard]] const M2S::gyb::patch_order_t& selected_bank() const;
+		[[nodiscard]] M2S::fm::patch& selected_patch();
+		[[nodiscard]] const M2S::fm::patch& selected_patch() const;
 
 		void render_patch_selector();
 		void render_patch_mappings();
@@ -63,17 +63,17 @@ namespace MID3SMPS {
 		void render_lfo();
 		void render_operator_headers();
 
-		void render_detune					(const fm::operators::op_id &op_id);
-		void render_multiple				(const fm::operators::op_id &op_id);
-		void render_total_level				(const fm::operators::op_id &op_id);
-		void render_rate_scaling			(const fm::operators::op_id &op_id);
-		void render_attack_rate				(const fm::operators::op_id &op_id);
-		void render_amplitude_modulation	(const fm::operators::op_id &op_id);
-		void render_decay_rate				(const fm::operators::op_id &op_id);
-		void render_sustain_rate			(const fm::operators::op_id &op_id);
-		void render_sustain_level			(const fm::operators::op_id &op_id);
-		void render_release_rate			(const fm::operators::op_id &op_id);
-		void render_ssgeg					(const fm::operators::op_id &op_id);
+		void render_detune					(const ym2612::operators::op_id &op_id);
+		void render_multiple				(const ym2612::operators::op_id &op_id);
+		void render_total_level				(const ym2612::operators::op_id &op_id);
+		void render_rate_scaling			(const ym2612::operators::op_id &op_id);
+		void render_attack_rate				(const ym2612::operators::op_id &op_id);
+		void render_amplitude_modulation	(const ym2612::operators::op_id &op_id);
+		void render_decay_rate				(const ym2612::operators::op_id &op_id);
+		void render_sustain_rate			(const ym2612::operators::op_id &op_id);
+		void render_sustain_level			(const ym2612::operators::op_id &op_id);
+		void render_release_rate			(const ym2612::operators::op_id &op_id);
+		void render_ssgeg					(const ym2612::operators::op_id &op_id);
 
 		void render_ams();
 		void render_fms();
@@ -92,7 +92,7 @@ namespace MID3SMPS {
 
 		[[nodiscard]] static scroll_wheel_direction handle_scroll();
 		template<std::size_t max_value = 0, std::integral T, std::enable_if_t<!std::is_enum_v<T>, bool> = true>
-		[[nodiscard]] static std::optional<T> handle_combo_scroll(const T &value, bool invert = false);
+		[[nodiscard]] static std::optional<T> handle_combo_scroll(const safe_int<T> &value, bool invert = false);
 		template<typename T, std::enable_if_t<std::is_enum_v<T>, bool> = true>
 		[[nodiscard]] static std::optional<T> handle_combo_scroll(const T &enumeration);
 

@@ -1,9 +1,9 @@
 #include <fstream>
 
 #include "mapping.hpp"
-#include "formatException.hpp"
+#include "exceptions/formatException.hpp"
 
-namespace MID3SMPS {
+namespace MID3SMPS::M2S {
 	mapping::mapping(const fs::path &path) {
 		std::ifstream input(path);
 		input.exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit);

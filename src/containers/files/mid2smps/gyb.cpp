@@ -17,7 +17,7 @@ namespace MID3SMPS {
 			file.unsetf(std::ios::skipws);
 
 			file.seekg(0, std::ios::end);
-			const std::streampos fileSize = file.tellg();
+			const auto fileSize = file.tellg();
 			file.seekg(0, std::ios::beg);
 
 			data.resize(static_cast<std::size_t>(fileSize));
@@ -71,10 +71,22 @@ namespace MID3SMPS {
 		auto &[melodic_name, melodic_order] = patches_order[bank::melodic];
 		melodic_name = "Melodic bank";
 		melodic_order.reserve(instrument_count);
-		for(ins_count_t current_instrument = 0; current_instrument < instrument_count; current_instrument++) {
+		for(ins_key_t current_instrument = 0; current_instrument < instrument_count; current_instrument++) {
 			const auto start_of_instrument = stream.tellg();
 			const auto instrument_size = stream_convert<std::uint16_t>(stream);
 			add_patch(bank::melodic, version, data.subspan(static_cast<std::size_t>(start_of_instrument), instrument_size));
+			stream.seekg(start_of_instrument + static_cast<std::streamoff>(instrument_size));
+		}
+
+		const auto drum_count = stream_convert<std::uint16_t>(stream);
+		patches.reserve(drum_count);
+		auto &[drum_name, drum_order] = patches_order[bank::drum];
+		drum_name = "drum bank";
+		drum_order.reserve(instrument_count + drum_count);
+		for(ins_key_t current_instrument = 0; current_instrument < drum_count; current_instrument++) {
+			const auto start_of_instrument = stream.tellg();
+			const auto instrument_size = stream_convert<std::uint16_t>(stream);
+			add_patch(bank::drum, version, data.subspan(static_cast<std::size_t>(start_of_instrument), instrument_size));
 			stream.seekg(start_of_instrument + static_cast<std::streamoff>(instrument_size));
 		}
 	}

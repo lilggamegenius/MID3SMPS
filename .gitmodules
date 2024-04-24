@@ -7,3 +7,6 @@
 [submodule "lib/libremidi"]
 	path = lib/libremidi
 	url = https://github.com/jcelerier/libremidi.git
+[submodule "lib/Nuked-OPN2"]
+	path = lib/Nuked-OPN2
+	url = git@github.com:nukeykt/Nuked-OPN2.git

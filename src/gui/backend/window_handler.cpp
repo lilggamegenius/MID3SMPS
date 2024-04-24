@@ -3,9 +3,9 @@
 #include <imgui_internal.h>
 #include <GLFW/glfw3.h>
 
-#include "backend/window_handler.hpp"
+#include "gui/backend/window_handler.hpp"
 #include "containers/program_persistence.hpp"
-#include "windows/main_window.hpp"
+#include "gui/windows/main_window.hpp"
 
 namespace MID3SMPS {
 	bool show_demo_window = true;

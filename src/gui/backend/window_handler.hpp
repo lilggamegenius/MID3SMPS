@@ -23,7 +23,7 @@ struct FpsIdling{
 		friend struct FpsIdling;
 		FpsIdling* ref = nullptr;
 
-		constexpr explicit override(FpsIdling& ref_) : ref(&ref_) {
+		explicit override(FpsIdling& ref_) : ref(&ref_) {
 			++ref->overrides;
 		}
 
@@ -33,7 +33,7 @@ struct FpsIdling{
 		constexpr override(override&& other) noexcept {
 			std::swap(ref, other.ref);
 		}
-		constexpr override(const override &other) : override(*other.ref){}
+		override(const override &other) : override(*other.ref){}
 
 		constexpr ~override() noexcept{
 			if(!ref) { return; }
@@ -53,7 +53,7 @@ struct FpsIdling{
 		}
 
 		constexpr operator bool() const {
-			return ref;
+			return ref != nullptr;
 		}
 	};
 

@@ -6,7 +6,7 @@
 
 #include "window.hpp"
 #include "ym2612_edit.hpp"
-#include "containers/files/mapping.hpp"
+#include "containers/files/mid2smps/mapping.hpp"
 
 namespace fs = std::filesystem;
 
@@ -21,7 +21,7 @@ namespace MID3SMPS {
 		libremidi::reader::parse_result parse_result_{};
 
 		fs::path mapping_path_{};
-		mapping map_;
+		M2S::mapping map_;
 
 		std::unique_ptr<ym2612_edit> ym2612_edit_{};
 

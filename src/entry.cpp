@@ -1,4 +1,4 @@
-#include "backend/window_handler.hpp"
+#include "gui/backend/window_handler.hpp"
 
 int main() {
 	return imgui_main(

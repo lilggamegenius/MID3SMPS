@@ -65,7 +65,7 @@ namespace MID3SMPS {
 			}
 		}
 
-		[[nodiscard]] constexpr bool empty() const noexcept {
+		[[nodiscard]] bool empty() const noexcept {
 			if(!last_config_.empty()) { return false; }
 			return true;
 		}

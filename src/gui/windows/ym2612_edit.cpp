@@ -4,16 +4,18 @@
 #include <imgui.h>
 #include <execution>
 #include <imgui_internal.h>
-#include <backend/window_handler.hpp>
+#include <gui/backend/window_handler.hpp>
 
-#include "containers/files/gyb.hpp"
-#include "containers/files/fm/patch.hpp"
+#include "containers/files/mid2smps/gyb.hpp"
+#include "containers/files/mid2smps/fm/patch.hpp"
 
 static constexpr auto default_hover_flags = ImGuiHoveredFlags_AllowWhenDisabled | ImGuiHoveredFlags_ForTooltip;
 
 namespace MID3SMPS {
+	using namespace ym2612;
+	using namespace M2S;
 	template<std::size_t max_value, std::integral T, std::enable_if_t<!std::is_enum_v<T>, bool>>
-	std::optional<T> ym2612_edit::handle_combo_scroll(const T &value, bool invert) {
+	std::optional<T> ym2612_edit::handle_combo_scroll(const safe_int<T> &value, bool invert) {
 		auto new_val = value;
 		auto scroll = handle_scroll();
 		using enum scroll_wheel_direction;
@@ -51,7 +53,7 @@ namespace MID3SMPS {
 	template<typename T, std::enable_if_t<std::is_enum_v<T>, bool>>
 	std::optional<T> ym2612_edit::handle_combo_scroll(const T &enumeration) {
 		const auto underlying = std::to_underlying(enumeration);
-		const auto new_enum = handle_combo_scroll<fm::list<T>().size(), std::underlying_type_t<T>>(underlying);
+		const auto new_enum = handle_combo_scroll<list<T>().size(), std::underlying_type_t<T>>(underlying);
 		if(new_enum) {
 			return static_cast<T>(*new_enum);
 		}
@@ -59,12 +61,11 @@ namespace MID3SMPS {
 	}
 
 	template<>
-	std::optional<fm::operators::ssgeg_mode> ym2612_edit::handle_combo_scroll(const fm::operators::ssgeg_mode &enumeration) {
-		using T = fm::operators::ssgeg_mode;
+	std::optional<operators::ssgeg_mode> ym2612_edit::handle_combo_scroll(const ym2612::operators::ssgeg_mode &enumeration) {
+		using T = operators::ssgeg_mode;
 		static constexpr auto size = std::to_underlying(T::mode7)+1;
 		const auto underlying = std::to_underlying(enumeration);
-		const auto new_enum = handle_combo_scroll<size, decltype(underlying)>(underlying);
-		if(new_enum) {
+		if(const auto new_enum = handle_combo_scroll<size, decltype(underlying)>(underlying)) {
 			auto value = *new_enum;
 			if(value == std::to_underlying(T::disabled)+1) {
 				return T::mode0;
@@ -201,7 +202,7 @@ namespace MID3SMPS {
 			std::fill(std::execution::par_unseq, adsr_data.begin(), adsr_data.end(), 0);
 		} else {
 			const auto &operators = selected_patch().operators;
-			const auto id = fm::operators::op_id::op4;
+			constexpr auto id     = operators::op_id::op4;
 			if(operators.attack_rate(id) == 0) {
 				goto skip_render;
 			}
@@ -243,7 +244,7 @@ namespace MID3SMPS {
 					case 1: {
 						ImGui::TableNextColumn();
 						ImGui::TextUnformatted("Detune");
-						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
+						for(const auto &op_id : list<operators::op_id>()) {
 							ImGui::TableNextColumn();
 							render_detune(op_id);
 						}
@@ -252,7 +253,7 @@ namespace MID3SMPS {
 					case 2: {
 						ImGui::TableNextColumn();
 						ImGui::TextUnformatted("Multiple");
-						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
+						for(const auto &op_id : list<operators::op_id>()) {
 							ImGui::TableNextColumn();
 							render_multiple(op_id);
 						}
@@ -261,7 +262,7 @@ namespace MID3SMPS {
 					case 3: {
 						ImGui::TableNextColumn();
 						ImGui::TextUnformatted("Total Level");
-						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
+						for(const auto &op_id : list<operators::op_id>()) {
 							ImGui::TableNextColumn();
 							render_total_level(op_id);
 						}
@@ -270,7 +271,7 @@ namespace MID3SMPS {
 					case 4: {
 						ImGui::TableNextColumn();
 						ImGui::TextUnformatted("Rate Scaling");
-						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
+						for(const auto &op_id : list<operators::op_id>()) {
 							ImGui::TableNextColumn();
 							render_rate_scaling(op_id);
 						}
@@ -279,7 +280,7 @@ namespace MID3SMPS {
 					case 5: {
 						ImGui::TableNextColumn();
 						ImGui::TextUnformatted("Attack Rate");
-						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
+						for(const auto &op_id : list<operators::op_id>()) {
 							ImGui::TableNextColumn();
 							render_attack_rate(op_id);
 						}
@@ -288,7 +289,7 @@ namespace MID3SMPS {
 					case 6: {
 						ImGui::TableNextColumn();
 						ImGui::TextUnformatted("Amplitude Modulation");
-						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
+						for(const auto &op_id : list<operators::op_id>()) {
 							ImGui::TableNextColumn();
 							render_amplitude_modulation(op_id);
 						}
@@ -297,7 +298,7 @@ namespace MID3SMPS {
 					case 7: {
 						ImGui::TableNextColumn();
 						ImGui::TextUnformatted("Decay Rate");
-						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
+						for(const auto &op_id : list<operators::op_id>()) {
 							ImGui::TableNextColumn();
 							render_decay_rate(op_id);
 						}
@@ -306,7 +307,7 @@ namespace MID3SMPS {
 					case 8: {
 						ImGui::TableNextColumn();
 						ImGui::TextUnformatted("Sustain Rate");
-						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
+						for(const auto &op_id : list<operators::op_id>()) {
 							ImGui::TableNextColumn();
 							render_sustain_rate(op_id);
 						}
@@ -315,7 +316,7 @@ namespace MID3SMPS {
 					case 9: {
 						ImGui::TableNextColumn();
 						ImGui::TextUnformatted("Sustain Level");
-						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
+						for(const auto &op_id : list<operators::op_id>()) {
 							ImGui::TableNextColumn();
 							render_sustain_level(op_id);
 						}
@@ -324,7 +325,7 @@ namespace MID3SMPS {
 					case 10: {
 						ImGui::TableNextColumn();
 						ImGui::TextUnformatted("Release Rate");
-						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
+						for(const auto &op_id : list<operators::op_id>()) {
 							ImGui::TableNextColumn();
 							render_release_rate(op_id);
 						}
@@ -333,7 +334,7 @@ namespace MID3SMPS {
 					case 11: {
 						ImGui::TableNextColumn();
 						ImGui::TextUnformatted("SSG-EG");
-						for(const auto &op_id : fm::list<fm::operators::op_id>()) {
+						for(const auto &op_id : list<operators::op_id>()) {
 							ImGui::TableNextColumn();
 							render_ssgeg(op_id);
 						}
@@ -434,7 +435,7 @@ namespace MID3SMPS {
 		if(selected_id) {
 			return gyb_.patches[selected_id->second];
 		}
-		return const_cast<fm::patch&>(fm::empty_patch); // Patch editing is disabled if there is no patch selected
+		return fm::empty_patch; // Patch editing is disabled if there is no patch selected
 	}
 	const fm::patch& ym2612_edit::selected_patch() const{
 		if(selected_id) {
@@ -453,7 +454,7 @@ namespace MID3SMPS {
 		auto &val = gyb_.default_LFO_speed;
 		ImGui::SetNextItemWidth(-1);
 		dear::Combo{"##LFO Value", gyb::string(val).data()} && [this, &val] {
-			for (const auto &current : fm::list<gyb::lfo>()){
+			for (const auto &current : list<gyb::lfo>()){
 				const bool is_selected = gyb_.default_LFO_speed == current;
 				if (ImGui::Selectable(gyb::string(current).data(), is_selected)) {
 					val = current;
@@ -476,14 +477,15 @@ namespace MID3SMPS {
 	}
 
 	void ym2612_edit::render_operator_headers() {
-		for(const auto &op_id : fm::list<fm::operators::op_id>()) {
+		for(const auto &op_id : list<operators::op_id>()) {
 			ImGui::TableNextColumn();
-			const auto str = fm::operators::string(op_id);
-			auto iter = str.cbegin();
+			const auto str = operators::string(op_id);
+			auto iter = str.data();
 			if(ImGui::GetWindowWidth() < 600.f) { // Todo: Make this relative to available space
 				std::advance(iter, 9); // Only show the operator number if window is too small
 			}
-			ImGui::TextUnformatted(iter, str.cend());
+			const auto cend = str.data() + str.size(); // Windows STL in debug mode doesn't use a ptr for iterators; no way to get the ptr without dereferencing it
+			ImGui::TextUnformatted(iter, cend);
 			dear::ItemTooltip{} && [this, &str] {
 				ImGui::Text("Imagine an envelope preview here for %s", str.data());
 				[[maybe_unused]] const auto &patch = selected_patch();
@@ -491,14 +493,14 @@ namespace MID3SMPS {
 		}
 	}
 
-	void ym2612_edit::render_detune(const fm::operators::op_id &op_id) {
-		using oper = fm::operators;
+	void ym2612_edit::render_detune(const operators::op_id &op_id) {
+		using oper = operators;
 		dear::WithID(&op_id) && [this, &op_id] {
 			ImGui::SetNextItemWidth(-1);
 			auto &op = selected_patch().operators;
 			const auto val = op.detune(op_id);
 			dear::Combo{"##detune", oper::string(val).data()} && [&op, &op_id, &val] {
-				for (const auto &current : fm::list<oper::detune_mode>()){
+				for (const auto &current : list<oper::detune_mode>()){
 					const bool is_selected = val == current;
 					if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
 						op.detune(op_id, current);
@@ -514,7 +516,7 @@ namespace MID3SMPS {
 			}
 		};
 	}
-	void ym2612_edit::render_multiple(const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_multiple(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 16/4;
 		dear::WithID(&op_id) && [this, &op_id] {
 			auto &op = selected_patch().operators;
@@ -528,7 +530,7 @@ namespace MID3SMPS {
 			}
 		};
 	}
-	void ym2612_edit::render_total_level(const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_total_level(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 128/4;
 		dear::WithID(&op_id) && [this, &op_id] {
 			auto &op = selected_patch().operators;
@@ -542,14 +544,14 @@ namespace MID3SMPS {
 			}
 		};
 	}
-	void ym2612_edit::render_rate_scaling(const fm::operators::op_id &op_id) {
-		using oper = fm::operators;
+	void ym2612_edit::render_rate_scaling(const operators::op_id &op_id) {
+		using oper = operators;
 		dear::WithID(&op_id) && [this, &op_id] {
 			auto &op = selected_patch().operators;
 			const auto val = op.rate_scaling(op_id);
 			ImGui::SetNextItemWidth(-1);
 			dear::Combo{"##rate_scaling",  oper::string(val).data()} && [&op, &op_id, &val] {
-				for (const auto &current : fm::list<oper::rate_scaling_mode>()){
+				for (const auto &current : list<oper::rate_scaling_mode>()){
 					const bool is_selected = val == current;
 					if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
 						op.rate_scaling(op_id, current);
@@ -565,7 +567,7 @@ namespace MID3SMPS {
 			}
 		};
 	}
-	void ym2612_edit::render_attack_rate(const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_attack_rate(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
 		dear::WithID(&op_id) && [this, &op_id] {
 			auto &op = selected_patch().operators;
@@ -579,7 +581,7 @@ namespace MID3SMPS {
 			}
 		};
 	}
-	void ym2612_edit::render_amplitude_modulation(const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_amplitude_modulation(const operators::op_id &op_id) {
 		static constexpr std::array values = {
 			"Disabled",
 			"Enabled"
@@ -607,7 +609,7 @@ namespace MID3SMPS {
 			}
 		};
 	}
-	void ym2612_edit::render_decay_rate(const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_decay_rate(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
 		dear::WithID(&op_id) && [this, &op_id] {
 			auto &op = selected_patch().operators;
@@ -621,7 +623,7 @@ namespace MID3SMPS {
 			}
 		};
 	}
-	void ym2612_edit::render_sustain_rate(const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_sustain_rate(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
 		dear::WithID(&op_id) && [this, &op_id] {
 			auto &op = selected_patch().operators;
@@ -635,7 +637,7 @@ namespace MID3SMPS {
 			}
 		};
 	}
-	void ym2612_edit::render_sustain_level(const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_sustain_level(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
 		dear::WithID(&op_id) && [this, &op_id] {
 			auto &op = selected_patch().operators;
@@ -649,7 +651,7 @@ namespace MID3SMPS {
 			}
 		};
 	}
-	void ym2612_edit::render_release_rate(const fm::operators::op_id &op_id) {
+	void ym2612_edit::render_release_rate(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
 		dear::WithID(&op_id) && [this, &op_id] {
 			auto &op = selected_patch().operators;
@@ -663,14 +665,14 @@ namespace MID3SMPS {
 			}
 		};
 	}
-	void ym2612_edit::render_ssgeg(const fm::operators::op_id &op_id) {
-		using oper = fm::operators;
+	void ym2612_edit::render_ssgeg(const operators::op_id &op_id) {
+		using oper = operators;
 		dear::WithID(&op_id) && [this, &op_id] {
 			auto &op = selected_patch().operators;
 			const auto val = op.ssgeg(op_id);
 			ImGui::SetNextItemWidth(-1);
 			dear::Combo{"##ssgeg", oper::string(val).data()} && [&op, &op_id, &val] {
-				for (const auto &current : fm::list<oper::ssgeg_mode>()){
+				for (const auto &current : list<oper::ssgeg_mode>()){
 					const bool is_selected = val == current;
 					if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
 						op.ssgeg(op_id, current);
@@ -694,7 +696,7 @@ namespace MID3SMPS {
 			hovered = true;
 		}
 		ImGui::SameLine();
-		using oper = fm::operators;
+		using oper = operators;
 		static constexpr std::array strings = {
 			"0"sv,
 			"1.4"sv,
@@ -733,7 +735,7 @@ namespace MID3SMPS {
 			hovered = true;
 		}
 		ImGui::SameLine();
-		using oper = fm::operators;
+		using oper = operators;
 		static constexpr std::array strings = {
 			"0"sv,
 			"\u00b13.4"sv,
@@ -774,10 +776,10 @@ namespace MID3SMPS {
 		ImGui::TableNextColumn();
 		auto &op = selected_patch().operators;
 		const auto val = op.feedback();
-		using oper = fm::operators;
+		using oper = operators;
 		ImGui::SetNextItemWidth(-1);
 		dear::Combo{"##Feedback value", oper::string(val).data()} && [&op, &val] {
-			for (const auto &current : fm::list<oper::feedback_mode>()){
+			for (const auto &current : list<oper::feedback_mode>()){
 				const bool is_selected = val == current;
 				if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
 					op.feedback(current);
@@ -798,10 +800,10 @@ namespace MID3SMPS {
 		ImGui::TableNextColumn();
 		auto &op = selected_patch().operators;
 		const auto val = op.algorithm();
-		using oper = fm::operators;
+		using oper = operators;
 		ImGui::SetNextItemWidth(-1);
 		dear::Combo{"##Algorithm value", oper::string(val).data()} && [&op, &val] {
-			for (const auto &current : fm::list<oper::algorithm_mode>()){
+			for (const auto &current : list<oper::algorithm_mode>()){
 				const bool is_selected = val == current;
 				if (ImGui::Selectable(oper::string(current).data(), is_selected)) {
 					op.algorithm(current);
@@ -830,7 +832,7 @@ namespace MID3SMPS {
 		const std::uint_fast8_t offset = current_row * 8;
 		const std::uint_fast8_t max = current_row == 3 ? 6 : 8;
 		const auto width = ImGui::GetContentRegionAvail().x / 4;
-		auto &op = const_cast<fm::operators &>(selected_patch().operators); // InputScalar takes non-const pointer but can't actually write in this case
+		auto &op = const_cast<operators &>(selected_patch().operators); // InputScalar takes non-const pointer but can't actually write in this case
 		for(std::uint_fast8_t i = 0; i < max; i++) {
 			if(i == 4) {
 				ImGui::TableNextColumn();

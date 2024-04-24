@@ -7,10 +7,10 @@
 
 #include "main_window.hpp"
 
-#include "backend/window_handler.hpp"
+#include "gui/backend/window_handler.hpp"
 
 #include "containers/program_persistence.hpp"
-#include "containers/files/mapping.hpp"
+#include "containers/files/mid2smps/mapping.hpp"
 
 static const IGFD::FileDialogConfig default_file_dialog_config{
 	.path = "",
@@ -287,13 +287,13 @@ namespace MID3SMPS {
 
 	void main_window::open_mapping(fs::path &&map_path, bool set_persistence) {
 		try {
-			map_ = mapping(map_path);
+			map_ = M2S::mapping(map_path);
 			status_ = fmt::format("Loaded {}", map_path.filename().string());
 			if(set_persistence) {
 				persistence->last_config_ = map_path;
 			}
 			if(ym2612_edit_ && fs::exists(map_.gyb())) {
-				ym2612_edit_->gyb_ = gyb{map_.gyb()};
+				ym2612_edit_->gyb_ = M2S::gyb{map_.gyb()};
 			}
 			cache_string(&map_.gyb(), map_.gyb().filename().string());
 			mapping_path_ = std::move(map_path);
@@ -314,7 +314,7 @@ namespace MID3SMPS {
 		if(!ym2612_edit_) {
 			ym2612_edit_ = std::make_unique<ym2612_edit>();
 			if(fs::exists(map_.gyb())) {
-				ym2612_edit_->gyb_ = gyb{map_.gyb()};
+				ym2612_edit_->gyb_ = M2S::gyb{map_.gyb()};
 			}
 		} else {
 			ImGui::SetWindowFocus(ym2612_edit_->window_title());

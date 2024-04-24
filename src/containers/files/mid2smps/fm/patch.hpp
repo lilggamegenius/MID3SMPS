@@ -4,33 +4,33 @@
 #include <span>
 #include <spanstream>
 
-#include "operators.hpp"
+#include "containers/chips/ym2612/operators.hpp"
 
-namespace MID3SMPS {
+namespace MID3SMPS::M2S {
 	enum class version {
 		v1,
 		v2,
 		v3
 	};
 
+	struct options {
+		bool chord_notes: 1;
+	};
+
+	struct chords {
+		std::uint8_t note_count;
+		std::span<std::int8_t> relative_notes;
+	};
+
 	namespace fm {
-		struct options {
-			bool chord_notes: 1;
-		};
-
-		struct chords {
-			std::uint8_t note_count;
-			std::span<std::int8_t> relative_notes;
-		};
-
 		struct patch {
 			std::string name{};
 			//std::uint16_t total_size{};
-			fm::operators operators{};
+			ym2612::operators operators{};
+			M2S::options options{};
+			chords chord_notes{};
 			std::int8_t instrument_transposition{};
 			std::uint8_t default_drum_note{};
-			fm::options options{};
-			chords chord_notes{};
 
 			constexpr patch()									= default;
 			constexpr patch(const patch &other)                 = default;
@@ -61,7 +61,7 @@ namespace MID3SMPS {
 			}
 		};
 
-		static constexpr patch empty_patch{};
+		static patch empty_patch{};
 	}
 
 	template<typename T>
@@ -93,7 +93,7 @@ namespace MID3SMPS {
 		if constexpr (native == std::endian::little) {
 			stream.read(data.data(), size);
 		} else if constexpr (native == std::endian::big) {
-			static_assert(false, "Big endian not supported yet."); // Todo
+			static_assert(false, "Big endian not supported yet."); // Todo: Impliment this when it actually becomes an issue
 		} else {
 			static_assert(false, "Mixed endian not supported");
 		}
