@@ -1,126 +1,38 @@
 #pragma once
 
 #include <cstdint>
-#include <filesystem>
-#include <vector>
-#include <unordered_map>
 #include <span>
+#include <filesystem>
 
-#include "helpers/list_helper.hpp"
+#include "containers/instrument_bank.hpp"
 #include "fm/patch.hpp"
 
 namespace MID3SMPS::M2S {
-	using ins_key_t = std::uint16_t;
-	using bank_key_t = std::uint16_t;
 	namespace fs = std::filesystem;
-	struct gyb {
-		enum class lfo : std::uint8_t{
-			off,
-			mode0 = 0b1000,
-			mode1,
-			mode2,
-			mode3,
-			mode4,
-			mode5,
-			mode6,
-			mode7,
-		};
-		static constexpr std::array lfo_values = { // Hz
-			0., // Off
-			3.98,
-			5.56,
-			6.02,
-			6.37,
-			6.88,
-			9.63,
-			48.1,
-			72.2
-		};
-		enum bank : bank_key_t{
-			melodic,
-			drum
-		};
-		lfo default_LFO_speed{};
-		using patch_container_t = std::unordered_map<ins_key_t, fm::patch>;
-		using patch_order_t = std::vector<ins_key_t>;
-		patch_container_t patches;
-		std::unordered_map<bank, std::pair<std::string, patch_order_t>> patches_order;
 
-	private:
-		mutable ins_key_t current_id = 0;
+	struct gyb : instrument_bank {
+		using ins_key_t = std::uint16_t;
 
-		[[nodiscard]] ins_key_t new_unique_id() const {
-			while(patches.contains(current_id)) {
-				++current_id;
-			}
-			return current_id;
-		}
+		ym2612::lfo default_LFO_speed{};
 
-	public:
 		template<typename... Args>
-		fm::patch& add_patch(bank selected_bank, Args&&... args) {
-			const auto id = new_unique_id();
-			fm::patch patch(args...);
-			auto [iter, inserted] = patches.emplace(id, std::move(patch));
-			if(!inserted) {
-				throw std::runtime_error(fmt::format("Failed to add fm::patch with ID {}", id));
-			}
-			patches_order[selected_bank].second.emplace_back(id);
-			return iter->second;
+		fm::patch &add_patch(const bank_key_t &selected_bank, Args &&... args) {
+			auto &ret = add_instrument(std::make_unique<fm::patch>(args...), selected_bank);
+			return dynamic_cast<fm::patch &>(ret);
 		}
 
-		gyb()								 = default;
-		gyb(const gyb &other)                = default;
+		gyb()                                = default;
 		gyb(gyb &&other) noexcept            = default;
-		gyb &operator=(const gyb &other)     = default;
 		gyb &operator=(gyb &&other) noexcept = default;
-
+		//~gyb() override						 = default;
 		explicit gyb(const fs::path &path);
 
 	private:
 		void load_v1(std::span<const std::uint8_t> data);
 		void load_v2(std::span<const std::uint8_t> data);
 		void load_v3(std::span<const std::uint8_t> data);
-
-	public:
-		[[nodiscard, gnu::const]] static constexpr auto string(const lfo &mode) {
-			using namespace std::string_view_literals;
-			using enum lfo;
-			switch(mode) {
-				case off: return "Off"sv;
-				case mode0: return "3.98 Hz"sv;
-				case mode1: return "5.56 Hz"sv;
-				case mode2: return "6.02 Hz"sv;
-				case mode3: return "6.37 Hz"sv;
-				case mode4: return "6.88 Hz"sv;
-				case mode5: return "9.63 Hz"sv;
-				case mode6: return "48.1 Hz"sv;
-				case mode7: return "72.2 Hz"sv;
-				default: throw std::logic_error(fmt::format("Invalid value for lfo, got {}", std::to_underlying(mode)));
-			}
-		}
 	};
 }
-
-template<>
-struct MID3SMPS::list_helper<MID3SMPS::M2S::gyb::lfo> {
-	using type = std::span<const M2S::gyb::lfo, 9>;
-	static constexpr std::array values = {
-		M2S::gyb::lfo::off,
-		M2S::gyb::lfo::mode0,
-		M2S::gyb::lfo::mode1,
-		M2S::gyb::lfo::mode2,
-		M2S::gyb::lfo::mode3,
-		M2S::gyb::lfo::mode4,
-		M2S::gyb::lfo::mode5,
-		M2S::gyb::lfo::mode6,
-		M2S::gyb::lfo::mode7
-	};
-
-	[[nodiscard, gnu::const]] static constexpr type list() {
-		return values;
-	}
-};
 
 /*
 GYB Version 1/2

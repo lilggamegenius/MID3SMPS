@@ -1,8 +1,7 @@
 #pragma once
 
-#include <libremidi/libremidi.hpp>
-#include <libremidi/reader.hpp>
 #include <filesystem>
+#include <libremidi/reader.hpp>
 
 #include "window.hpp"
 #include "ym2612_edit.hpp"
@@ -11,9 +10,7 @@
 namespace fs = std::filesystem;
 
 namespace MID3SMPS {
-	class main_window : public window<main_window>{
-		bool stay_open_ = true;
-
+	class main_window : public window {
 		fs::path midi_path_{};
 		fs::path last_smps_path_{};
 
@@ -36,7 +33,7 @@ namespace MID3SMPS {
 
 		void show_menu_bar();
 		void render_file_dialogs();
-		void verify_and_set_midi(fs::path&& midi);
+		void verify_and_set_midi(fs::path &&midi);
 		void open_midi(fs::path &&midi);
 		void save_smps(const fs::path &path);
 		void open_mapping(fs::path &&map_path, bool set_persistence = true);
@@ -57,27 +54,32 @@ namespace MID3SMPS {
 		void open_tempo_calculator();
 		bool convert_song_title_{};
 		bool per_file_instruments_{};
-		bool auto_reload_midi_ = true;
+		bool auto_reload_midi_   = true;
 		bool auto_optimize_midi_ = true;
 
 		bool chorus_cc_volume_boost_ = true;
-		bool pan_law_compensation_ = true;
+		bool pan_law_compensation_   = true;
 
-		friend class window;
-		void render_impl();
-		void render_children_impl();
-		void on_close_impl();
-		[[nodiscard]] bool keep_impl() const;
-		[[nodiscard]] static constexpr const char* window_title_impl(){
+		// ReSharper disable CppInconsistentNaming
+		static constexpr std::string OpenMidi    = "OpenMidi";
+		static constexpr std::string SaveSmps    = "SaveSmps";
+		static constexpr std::string OpenMapping = "OpenMapping";
+		// ReSharper restore CppInconsistentNaming
+
+	public:
+		void render() override;
+		void render_children() override;
+		void on_close() override;
+
+		[[nodiscard]] constexpr const char *window_title() const override {
 			return "MID3SMPS";
 		}
 
-		// ReSharper disable CppInconsistentNaming
-		static constexpr std::string OpenMidi = "OpenMidi";
-		static constexpr std::string SaveSmps = "SaveSmps";
-		static constexpr std::string OpenMapping = "OpenMapping";
-		// ReSharper restore CppInconsistentNaming
+		main_window() = default;
+		main_window(main_window &&main_window_) noexcept : window(std::move(main_window_)) {}
+
+		~main_window() override = default;
 	};
 
 	fs::path get_path_from_file_dialog();
-} // MID3SMPS
+}

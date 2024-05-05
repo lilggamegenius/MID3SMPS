@@ -1,14 +1,12 @@
 #pragma once
 
-#include <string_view>
-
 #include "gui/windows/window.hpp"
 #include "containers/files/mid2smps/gyb.hpp"
 #include "containers/chips/ym2612/operators.hpp"
 
 namespace MID3SMPS {
 	using namespace std::string_view_literals;
-	class ym2612_edit : public window<ym2612_edit>{
+	class ym2612_edit : public window{
 		static constexpr std::array num_formats = {
 			"%i"sv,
 			"%X"sv
@@ -17,7 +15,6 @@ namespace MID3SMPS {
 			digital,
 			analog
 		} mode_{};
-		bool open_ = false;
 		bool hex_format = false;
 		[[nodiscard]] constexpr auto num_format() const {
 			if(hex_format) {
@@ -28,31 +25,31 @@ namespace MID3SMPS {
 		float last_space_remaining = 0;
 
 		M2S::gyb gyb_{};
-		bool diry_ = false;
+		bool dirty_ = false;
 
 		void render_menu_bar();
 		void render_patch_selection();
 		void render_editor_digital();
 		void render_editor_analog();
 
-		std::optional<std::pair<M2S::gyb::bank, M2S::ins_key_t>> selected_id = std::nullopt;
+		std::optional<std::pair<bank_key_t, ins_key_t>> selected_id = std::nullopt;
 		[[nodiscard]] constexpr bool has_selected_patch() const {
 			return selected_id.has_value();
 		}
-		[[nodiscard]] constexpr std::optional<M2S::gyb::bank> selected_bank_id() const {
+		[[nodiscard]] constexpr std::optional<bank_key_t> selected_bank_id() const {
 			if(!selected_id) {
 				return std::nullopt;
 			}
 			return selected_id->first;
 		}
-		[[nodiscard]] constexpr std::optional<M2S::ins_key_t> selected_patch_id() const {
+		[[nodiscard]] constexpr std::optional<ins_key_t> selected_patch_id() const {
 			if(!selected_id) {
 				return std::nullopt;
 			}
 			return selected_id->second;
 		}
-		[[nodiscard]] M2S::gyb::patch_order_t& selected_bank();
-		[[nodiscard]] const M2S::gyb::patch_order_t& selected_bank() const;
+		[[nodiscard]] M2S::gyb::ins_order_t& selected_bank();
+		[[nodiscard]] const M2S::gyb::ins_order_t& selected_bank() const;
 		[[nodiscard]] M2S::fm::patch& selected_patch();
 		[[nodiscard]] const M2S::fm::patch& selected_patch() const;
 
@@ -97,12 +94,10 @@ namespace MID3SMPS {
 		[[nodiscard]] static std::optional<T> handle_combo_scroll(const T &enumeration);
 
 		friend class main_window;
-		friend class window;
-		void render_impl();
-		void render_children_impl();
-		void on_close_impl();
-		[[nodiscard]] bool keep_impl() const;
-		[[nodiscard]] static constexpr const char* window_title_impl(){
+	public:
+		void render() override;
+		void on_close() override;
+		[[nodiscard]] constexpr const char* window_title() const override{
 			return "YM2612 Edit";
 		}
 	};

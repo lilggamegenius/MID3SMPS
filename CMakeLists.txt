@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_UNITY_BUILD TRUE)
+set(CMAKE_UNITY_BUILD FALSE)
 
 find_package(fmt CONFIG REQUIRED)
 find_package(gcem CONFIG REQUIRED)
@@ -98,7 +98,7 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
 		)
 	endif ()
 	set(OPTIMIZATION_FLAGS
-			-Ofast
+			$<IF:$<CONFIG:Debug>,-Og,-Ofast>
 	)
 	set(EXTERN_WARNING_FLAGS
 			-w
@@ -129,6 +129,10 @@ add_library(MID3SMPS STATIC
 		src/gui/windows/ym2612_edit.cpp src/gui/windows/ym2612_edit.hpp
 
 		src/containers/program_persistence.cpp src/containers/program_persistence.hpp
+
+		src/containers/instrument.hpp
+		src/containers/fm_instrument.hpp
+		src/containers/instrument_bank.cpp src/containers/instrument_bank.hpp
 
 		src/containers/files/mid2smps/mapping.cpp src/containers/files/mid2smps/mapping.hpp
 		src/containers/files/mid2smps/gyb.cpp src/containers/files/mid2smps/gyb.hpp

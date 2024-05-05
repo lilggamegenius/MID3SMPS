@@ -4,7 +4,7 @@
 #include <span>
 #include <spanstream>
 
-#include "containers/chips/ym2612/operators.hpp"
+#include "containers/fm_instrument.hpp"
 
 namespace MID3SMPS::M2S {
 	enum class version {
@@ -23,20 +23,19 @@ namespace MID3SMPS::M2S {
 	};
 
 	namespace fm {
-		struct patch {
-			std::string name{};
-			//std::uint16_t total_size{};
-			ym2612::operators operators{};
+		struct patch : fm_instrument{
 			M2S::options options{};
 			chords chord_notes{};
-			std::int8_t instrument_transposition{};
-			std::uint8_t default_drum_note{};
+			union {
+				std::int8_t instrument_transposition;
+				std::uint8_t default_drum_note{};
+			};
 
 			constexpr patch()									= default;
-			constexpr patch(const patch &other)                 = default;
-			constexpr patch(patch &&other) noexcept             = default;
-			constexpr patch& operator=(const patch &other)      = default;
-			constexpr patch& operator=(patch &&other) noexcept  = default;
+			constexpr patch(const patch &other)					= default;
+			constexpr patch(patch &&other) noexcept				= default;
+			constexpr patch& operator=(const patch &other)		= default;
+			constexpr patch& operator=(patch &&other) noexcept	= default;
 
 		private:
 			void load_v1(std::span<const std::uint8_t> data) { (void)data; throw std::runtime_error("Version 1 FM data not yet supported"); }
@@ -59,6 +58,8 @@ namespace MID3SMPS::M2S {
 						throw std::logic_error("Invalid instrument");
 				}
 			}
+
+			constexpr ~patch() override = default;
 		};
 
 		static patch empty_patch{};

@@ -5,10 +5,12 @@
 #include <utility>
 #include <fmt/core.h>
 
-#include <helpers/default_usings.hpp>
+#include "helpers/default_usings.hpp"
+#include "helpers/list_helper.hpp"
 
 namespace MID3SMPS::ym2612 {
 	using namespace std::string_view_literals;
+
 	struct operators {
 		using register_t                                     = bit_8;
 		static constexpr register_t instrument_register_size = 0x1E;
@@ -41,12 +43,14 @@ namespace MID3SMPS::ym2612 {
 			minus_3e,
 			// ReSharper restore CppInconsistentNaming
 		};
+
 		enum class rate_scaling_mode : register_t::value_type {
 			kc8,
 			kc4,
 			kc2,
 			kc1,
 		};
+
 		enum class ssgeg_mode : register_t::value_type {
 			disabled,
 			mode0 = 0b1000,
@@ -58,6 +62,7 @@ namespace MID3SMPS::ym2612 {
 			mode6,
 			mode7,
 		};
+
 		enum class feedback_mode : register_t::value_type {
 			off,
 			pi_div_16,
@@ -68,6 +73,7 @@ namespace MID3SMPS::ym2612 {
 			pi_mul_2,
 			pi_mul_4,
 		};
+
 		enum class algorithm_mode : register_t::value_type {
 			mode0,
 			mode1,
@@ -139,7 +145,7 @@ namespace MID3SMPS::ym2612 {
 
 		constexpr void total_level(const op_id &op, const register_t new_total_level) {
 			const register_t &value = std::min(new_total_level, masks::total_level); //value &= masks::total_level;
-			reg(op, 1) = value;
+			reg(op, 1)              = value;
 		}
 
 		[[nodiscard, gnu::pure]] constexpr rate_scaling_mode rate_scaling(const op_id &op) const {
@@ -191,7 +197,7 @@ namespace MID3SMPS::ym2612 {
 
 		constexpr void decay_rate(const op_id &op, const register_t new_decay_rate) {
 			const register_t &value = std::min(new_decay_rate, masks::decay_rate); //value &= masks::decay_rate;
-			register_t &dr_reg = reg(op, 3);
+			register_t &dr_reg      = reg(op, 3);
 			dr_reg &= ~masks::decay_rate;
 			dr_reg |= value;
 		}
@@ -203,7 +209,7 @@ namespace MID3SMPS::ym2612 {
 
 		constexpr void sustain_rate(const op_id &op, const register_t new_sustain_rate) {
 			register_t &sr_reg = reg(op, 4);
-			sr_reg       = std::min(new_sustain_rate, masks::sustain_rate);
+			sr_reg             = std::min(new_sustain_rate, masks::sustain_rate);
 		}
 
 		[[nodiscard, gnu::pure]] constexpr register_t sustain_level(const op_id &op) const {
@@ -241,14 +247,14 @@ namespace MID3SMPS::ym2612 {
 
 		constexpr void ssgeg(const op_id &op, const ssgeg_mode mode) {
 			register_t &ssgeg_reg = reg(op, 6);
-			ssgeg_reg       = std::to_underlying(mode);
+			ssgeg_reg             = std::to_underlying(mode);
 		}
 
 		static constexpr std::array ams_values = {
-			0.,
-			1.4,
-			5.9,
-			11.8
+				0.,
+				1.4,
+				5.9,
+				11.8
 		};
 
 		[[nodiscard, gnu::pure]] constexpr register_t ams() const {
@@ -267,14 +273,14 @@ namespace MID3SMPS::ym2612 {
 		}
 
 		static constexpr std::array fms_values = {
-			0.,
-			3.4,
-			6.7,
-			10.,
-			14.,
-			20.,
-			40.,
-			80.
+				0.,
+				3.4,
+				6.7,
+				10.,
+				14.,
+				20.,
+				40.,
+				80.
 		};
 
 		[[nodiscard, gnu::pure]] constexpr register_t fms() const {
@@ -411,28 +417,54 @@ namespace MID3SMPS::ym2612 {
 			return std::to_underlying(op);
 		}
 	};
+
 	static_assert(sizeof(operators) == operators::instrument_register_size.value);
+
+	enum class lfo : std::uint8_t {
+		off,
+		mode0 = 0b1000,
+		mode1,
+		mode2,
+		mode3,
+		mode4,
+		mode5,
+		mode6,
+		mode7,
+	};
+
+	static constexpr std::array lfo_values = {
+			// Hz
+			0., // Off
+			3.98,
+			5.56,
+			6.02,
+			6.37,
+			6.88,
+			9.63,
+			48.1,
+			72.2
+	};
 }
 
-	template<>
-	struct MID3SMPS::list_helper<MID3SMPS::ym2612::operators::op_id> {
-	using type = std::span<const ym2612::operators::op_id, 4>;
+template<>
+struct MID3SMPS::list_helper<MID3SMPS::ym2612::operators::op_id> {
+	using type                         = std::span<const ym2612::operators::op_id, 4>;
 	static constexpr std::array values = {
-		ym2612::operators::op_id::op1,
-		ym2612::operators::op_id::op2,
-		ym2612::operators::op_id::op3,
-		ym2612::operators::op_id::op4,
+			ym2612::operators::op_id::op1,
+			ym2612::operators::op_id::op2,
+			ym2612::operators::op_id::op3,
+			ym2612::operators::op_id::op4,
 	};
 
-		[[nodiscard, gnu::const]] static constexpr type list() {
-			return values;
-		}
-	};
+	[[nodiscard, gnu::const]] static constexpr type list() {
+		return values;
+	}
+};
 
-	template<>
-	struct MID3SMPS::list_helper<MID3SMPS::ym2612::operators::detune_mode> {
-		using type = std::span<const ym2612::operators::detune_mode, 8>;
-		static constexpr std::array values = {
+template<>
+struct MID3SMPS::list_helper<MID3SMPS::ym2612::operators::detune_mode> {
+	using type                         = std::span<const ym2612::operators::detune_mode, 8>;
+	static constexpr std::array values = {
 			ym2612::operators::detune_mode::no_change_1,
 			ym2612::operators::detune_mode::plus_e,
 			ym2612::operators::detune_mode::plus_2e,
@@ -441,32 +473,32 @@ namespace MID3SMPS::ym2612 {
 			ym2612::operators::detune_mode::minus_e,
 			ym2612::operators::detune_mode::minus_2e,
 			ym2612::operators::detune_mode::minus_3e
-		};
-
-		[[nodiscard, gnu::const]] static constexpr type list() {
-			return values;
-		}
 	};
 
-	template<>
-	struct MID3SMPS::list_helper<MID3SMPS::ym2612::operators::rate_scaling_mode> {
-		using type = std::span<const ym2612::operators::rate_scaling_mode, 4>;
-		static constexpr std::array values = {
+	[[nodiscard, gnu::const]] static constexpr type list() {
+		return values;
+	}
+};
+
+template<>
+struct MID3SMPS::list_helper<MID3SMPS::ym2612::operators::rate_scaling_mode> {
+	using type                         = std::span<const ym2612::operators::rate_scaling_mode, 4>;
+	static constexpr std::array values = {
 			ym2612::operators::rate_scaling_mode::kc8,
 			ym2612::operators::rate_scaling_mode::kc4,
 			ym2612::operators::rate_scaling_mode::kc2,
 			ym2612::operators::rate_scaling_mode::kc1,
-		};
-
-		[[nodiscard, gnu::const]] static constexpr type list() {
-			return values;
-		}
 	};
 
-	template<>
-	struct MID3SMPS::list_helper<MID3SMPS::ym2612::operators::ssgeg_mode> {
-		using type = std::span<const ym2612::operators::ssgeg_mode, 9>;
-		static constexpr std::array values = {
+	[[nodiscard, gnu::const]] static constexpr type list() {
+		return values;
+	}
+};
+
+template<>
+struct MID3SMPS::list_helper<MID3SMPS::ym2612::operators::ssgeg_mode> {
+	using type                         = std::span<const ym2612::operators::ssgeg_mode, 9>;
+	static constexpr std::array values = {
 			ym2612::operators::ssgeg_mode::disabled,
 			ym2612::operators::ssgeg_mode::mode0,
 			ym2612::operators::ssgeg_mode::mode1,
@@ -476,17 +508,17 @@ namespace MID3SMPS::ym2612 {
 			ym2612::operators::ssgeg_mode::mode5,
 			ym2612::operators::ssgeg_mode::mode6,
 			ym2612::operators::ssgeg_mode::mode7,
-		};
-
-		[[nodiscard, gnu::const]] static constexpr type list() {
-			return values;
-		}
 	};
 
-	template<>
-	struct MID3SMPS::list_helper<MID3SMPS::ym2612::operators::feedback_mode> {
-		using type = std::span<const ym2612::operators::feedback_mode, 8>;
-		static constexpr std::array values = {
+	[[nodiscard, gnu::const]] static constexpr type list() {
+		return values;
+	}
+};
+
+template<>
+struct MID3SMPS::list_helper<MID3SMPS::ym2612::operators::feedback_mode> {
+	using type                         = std::span<const ym2612::operators::feedback_mode, 8>;
+	static constexpr std::array values = {
 			ym2612::operators::feedback_mode::off,
 			ym2612::operators::feedback_mode::pi_div_16,
 			ym2612::operators::feedback_mode::pi_div_8,
@@ -495,17 +527,17 @@ namespace MID3SMPS::ym2612 {
 			ym2612::operators::feedback_mode::pi,
 			ym2612::operators::feedback_mode::pi_mul_2,
 			ym2612::operators::feedback_mode::pi_mul_4,
-		};
-
-		[[nodiscard, gnu::const]] static constexpr type list() {
-			return values;
-		}
 	};
 
-	template<>
-	struct MID3SMPS::list_helper<MID3SMPS::ym2612::operators::algorithm_mode> {
-		using type = std::span<const ym2612::operators::algorithm_mode, 8>;
-		static constexpr std::array values = {
+	[[nodiscard, gnu::const]] static constexpr type list() {
+		return values;
+	}
+};
+
+template<>
+struct MID3SMPS::list_helper<MID3SMPS::ym2612::operators::algorithm_mode> {
+	using type                         = std::span<const ym2612::operators::algorithm_mode, 8>;
+	static constexpr std::array values = {
 			ym2612::operators::algorithm_mode::mode0,
 			ym2612::operators::algorithm_mode::mode1,
 			ym2612::operators::algorithm_mode::mode2,
@@ -514,9 +546,30 @@ namespace MID3SMPS::ym2612 {
 			ym2612::operators::algorithm_mode::mode5,
 			ym2612::operators::algorithm_mode::mode6,
 			ym2612::operators::algorithm_mode::mode7
-		};
-
-		[[nodiscard, gnu::const]] static constexpr type list() {
-			return values;
-		}
 	};
+
+	[[nodiscard, gnu::const]] static constexpr type list() {
+		return values;
+	}
+};
+
+
+template<>
+struct MID3SMPS::list_helper<MID3SMPS::ym2612::lfo> {
+	using type                         = std::span<const ym2612::lfo, 9>;
+	static constexpr std::array values = {
+			ym2612::lfo::off,
+			ym2612::lfo::mode0,
+			ym2612::lfo::mode1,
+			ym2612::lfo::mode2,
+			ym2612::lfo::mode3,
+			ym2612::lfo::mode4,
+			ym2612::lfo::mode5,
+			ym2612::lfo::mode6,
+			ym2612::lfo::mode7
+	};
+
+	[[nodiscard, gnu::const]] static constexpr type list() {
+		return values;
+	}
+};

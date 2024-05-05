@@ -1,9 +1,9 @@
 #pragma once
 
 #include <atomic>
-#include <imguiwrap.h>
 #include <list>
 #include <memory>
+#include <imguiwrap.h>
 
 namespace MID3SMPS {
 	class main_window;

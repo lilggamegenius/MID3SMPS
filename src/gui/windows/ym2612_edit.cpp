@@ -53,7 +53,8 @@ namespace MID3SMPS {
 	template<typename T, std::enable_if_t<std::is_enum_v<T>, bool>>
 	std::optional<T> ym2612_edit::handle_combo_scroll(const T &enumeration) {
 		const auto underlying = std::to_underlying(enumeration);
-		const auto new_enum = handle_combo_scroll<list<T>().size(), std::underlying_type_t<T>>(underlying);
+		using underlying_t = std::underlying_type_t<T>;
+		const auto new_enum = handle_combo_scroll<list<T>().size(), underlying_t>(underlying);
 		if(new_enum) {
 			return static_cast<T>(*new_enum);
 		}
@@ -65,7 +66,8 @@ namespace MID3SMPS {
 		using T = operators::ssgeg_mode;
 		static constexpr auto size = std::to_underlying(T::mode7)+1;
 		const auto underlying = std::to_underlying(enumeration);
-		if(const auto new_enum = handle_combo_scroll<size, decltype(underlying)>(underlying)) {
+		using underlying_t = decltype(underlying);
+		if(const auto new_enum = handle_combo_scroll<size, underlying_t>(underlying)) {
 			auto value = *new_enum;
 			if(value == std::to_underlying(T::disabled)+1) {
 				return T::mode0;
@@ -79,11 +81,12 @@ namespace MID3SMPS {
 	}
 
 	template<>
-	std::optional<gyb::lfo> ym2612_edit::handle_combo_scroll(const gyb::lfo &enumeration) {
-		using T = gyb::lfo;
+	std::optional<lfo> ym2612_edit::handle_combo_scroll(const lfo &enumeration) {
+		using T = lfo;
 		static constexpr auto size = std::to_underlying(T::mode7)+1;
 		const auto underlying = std::to_underlying(enumeration);
-		const auto new_enum = handle_combo_scroll<size, decltype(underlying)>(underlying);
+		using underlying_t = decltype(underlying);
+		const auto new_enum = handle_combo_scroll<size, underlying_t>(underlying);
 		if(new_enum) {
 			auto value = *new_enum;
 			if(value == std::to_underlying(T::off)+1) {
@@ -97,8 +100,8 @@ namespace MID3SMPS {
 		return std::nullopt;
 	}
 
-	void ym2612_edit::render_impl() {
-		dear::Begin{window_title_impl(), &open_, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse} && [this] {
+	void ym2612_edit::render() {
+		dear::Begin{window_title(), &stay_open_, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse} && [this] {
 			//const auto dock_node = ImGui::GetWindowDockNode();
 			render_menu_bar();
 			render_patch_selection();
@@ -152,28 +155,26 @@ namespace MID3SMPS {
 	void ym2612_edit::render_patch_selector() {
 		static constexpr ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
 
-		for(const auto &[bank, data] : gyb_.patches_order) {
-			const auto &[name, ids] = data;
-
+		for(const auto &bank : gyb_.bank_order) {
 			auto category_flags = base_flags;
 			if(selected_bank_id() == bank) {
 				category_flags |= ImGuiTreeNodeFlags_Selected;
 			}
-			dear::TreeNodeEx(name.c_str(), category_flags) && [this, &ids, &bank] {
+			dear::TreeNodeEx(gyb_.banks[bank].c_str(), category_flags) && [this, &bank] {
 				ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
-				for(const auto &id : ids) {
-					const auto &patch = gyb_.patches[id];
+				for(const auto &id : gyb_.instruments_order[bank]) {
+					const auto &patch = gyb_.instruments[id];
 					auto patch_flags = base_flags;
 					if(selected_patch_id() == id) {
 						patch_flags |= ImGuiTreeNodeFlags_Selected;
 					}
 					patch_flags |= ImGuiTreeNodeFlags_Leaf;
-					dear::TreeNodeEx(patch.name.c_str(), patch_flags) && [this, &bank, &id, &patch] {
+					dear::TreeNodeEx(patch->name.c_str(), patch_flags) && [this, &bank, &id, &patch] {
 						if(ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
 							selected_id = {bank, id};
 						}
 						dear::ItemTooltip() && [&patch] {
-							ImGui::TextUnformatted(patch.name.c_str());
+							ImGui::TextUnformatted(patch->name.c_str());
 						};
 					};
 				}
@@ -433,13 +434,13 @@ namespace MID3SMPS {
 
 	fm::patch& ym2612_edit::selected_patch() {
 		if(selected_id) {
-			return gyb_.patches[selected_id->second];
+			return *dynamic_cast<fm::patch*>(gyb_.instruments[selected_id->second].get());
 		}
 		return fm::empty_patch; // Patch editing is disabled if there is no patch selected
 	}
 	const fm::patch& ym2612_edit::selected_patch() const{
 		if(selected_id) {
-			return gyb_.patches.at(selected_id->second);
+			return *dynamic_cast<fm::patch*>(gyb_.instruments.at(selected_id->second).get());
 		}
 		return fm::empty_patch;
 	}
@@ -454,7 +455,7 @@ namespace MID3SMPS {
 		auto &val = gyb_.default_LFO_speed;
 		ImGui::SetNextItemWidth(-1);
 		dear::Combo{"##LFO Value", gyb::string(val).data()} && [this, &val] {
-			for (const auto &current : list<gyb::lfo>()){
+			for (const auto &current : list<lfo>()){
 				const bool is_selected = gyb_.default_LFO_speed == current;
 				if (ImGui::Selectable(gyb::string(current).data(), is_selected)) {
 					val = current;
@@ -865,11 +866,5 @@ namespace MID3SMPS {
 		return neutral;
 	}
 
-	void ym2612_edit::render_children_impl() {}
-
-	void ym2612_edit::on_close_impl() {}
-
-	bool ym2612_edit::keep_impl() const {
-		return open_;
-	}
+	void ym2612_edit::on_close() {}
 } // MID3SMPS

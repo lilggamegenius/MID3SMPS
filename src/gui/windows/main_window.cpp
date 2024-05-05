@@ -1,5 +1,5 @@
-#include <imgui.h>
 #include <ImGuiFileDialog.h>
+#include <imgui.h>
 #include <imguiwrap.dear.h>
 #include <ranges>
 #include <thread>
@@ -37,7 +37,7 @@ namespace MID3SMPS {
 		dear::TextUnformatted(cache);
 	}
 
-	void main_window::render_impl() {
+	void main_window::render() {
 		static bool first_frame_completed = false;
 		if(!first_frame_completed) [[unlikely]] {
 			if(!persistence->empty()) {
@@ -45,7 +45,7 @@ namespace MID3SMPS {
 				open_mapping(std::move(map), false);
 			}
 		}
-		dear::Begin{window_title_impl(), &stay_open_, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse} && [this] {
+		dear::Begin{window_title(), &stay_open_, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse} && [this] {
 			show_menu_bar();
 
 			constexpr float minWidth  = 200;
@@ -319,23 +319,19 @@ namespace MID3SMPS {
 		} else {
 			ImGui::SetWindowFocus(ym2612_edit_->window_title());
 		}
-		ym2612_edit_->open_ = true;
+		ym2612_edit_->stay_open_ = true;
 	}
 
 	void main_window::open_mappings_editor() {}
 
 	void main_window::open_tempo_calculator() {}
 
-	void main_window::on_close_impl() {}
+	void main_window::on_close() {}
 
-	void main_window::render_children_impl() {
+	void main_window::render_children() {
 		render_file_dialogs();
 		if(ym2612_edit_ && ym2612_edit_->keep()) {
 			ym2612_edit_->render();
 		}
-	}
-
-	bool main_window::keep_impl() const {
-		return stay_open_;
 	}
 } // MID3SMPS
