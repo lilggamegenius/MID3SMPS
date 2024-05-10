@@ -131,7 +131,7 @@ namespace MID3SMPS::ym2612 {
 			return value & masks::multiple;
 		}
 
-		constexpr void multiple(const op_id &op, const register_t new_multiple) {
+		constexpr void multiple(const op_id &op, const register_t &new_multiple) {
 			const register_t &value  = std::min(new_multiple, masks::multiple); //value &= masks::multiple;
 			register_t &multiple_reg = reg(op, 0);
 			multiple_reg &= masks::detune;
@@ -143,7 +143,7 @@ namespace MID3SMPS::ym2612 {
 			return value & masks::total_level;
 		}
 
-		constexpr void total_level(const op_id &op, const register_t new_total_level) {
+		constexpr void total_level(const op_id &op, const register_t &new_total_level) {
 			const register_t &value = std::min(new_total_level, masks::total_level); //value &= masks::total_level;
 			reg(op, 1)              = value;
 		}
@@ -167,7 +167,7 @@ namespace MID3SMPS::ym2612 {
 			return value & masks::attack_rate;
 		}
 
-		constexpr void attack_rate(const op_id &op, const register_t new_attack_rate) {
+		constexpr void attack_rate(const op_id &op, const register_t &new_attack_rate) {
 			const register_t &value = std::min(new_attack_rate, masks::attack_rate); //value &= masks::attack_rate;
 			register_t &ar_reg      = reg(op, 2);
 			ar_reg &= masks::rate_scaling;
@@ -195,7 +195,7 @@ namespace MID3SMPS::ym2612 {
 			return dr_reg & masks::decay_rate;
 		}
 
-		constexpr void decay_rate(const op_id &op, const register_t new_decay_rate) {
+		constexpr void decay_rate(const op_id &op, const register_t &new_decay_rate) {
 			const register_t &value = std::min(new_decay_rate, masks::decay_rate); //value &= masks::decay_rate;
 			register_t &dr_reg      = reg(op, 3);
 			dr_reg &= ~masks::decay_rate;
@@ -207,7 +207,7 @@ namespace MID3SMPS::ym2612 {
 			return sr_reg & masks::sustain_rate;
 		}
 
-		constexpr void sustain_rate(const op_id &op, const register_t new_sustain_rate) {
+		constexpr void sustain_rate(const op_id &op, const register_t &new_sustain_rate) {
 			register_t &sr_reg = reg(op, 4);
 			sr_reg             = std::min(new_sustain_rate, masks::sustain_rate);
 		}
@@ -217,7 +217,7 @@ namespace MID3SMPS::ym2612 {
 			return sl_reg >> 4;
 		}
 
-		constexpr void sustain_level(const op_id &op, const register_t new_sustain_level) {
+		constexpr void sustain_level(const op_id &op, const register_t &new_sustain_level) {
 			register_t value = std::min(new_sustain_level, static_cast<register_t>(0x0F));
 			value <<= 4;
 			register_t &sl_reg = reg(op, 5);
@@ -230,7 +230,7 @@ namespace MID3SMPS::ym2612 {
 			return rr_reg & masks::release_rate;
 		}
 
-		constexpr void release_rate(const op_id &op, const register_t new_release_rate) {
+		constexpr void release_rate(const op_id &op, const register_t &new_release_rate) {
 			const register_t &value = std::min(new_release_rate, masks::release_rate);
 			//value &= masks::release_rate;
 			register_t &rr_reg = reg(op, 5);
@@ -264,7 +264,7 @@ namespace MID3SMPS::ym2612 {
 			return val;
 		}
 
-		constexpr void ams(const register_t new_ams_val) {
+		constexpr void ams(const register_t &new_ams_val) {
 			register_t val = std::min(new_ams_val, static_cast<register_t>(3));
 			val <<= 4;
 			register_t &lfo_sensitivity_reg = reg(op_id::op3, 7);
@@ -288,7 +288,7 @@ namespace MID3SMPS::ym2612 {
 			return lfo_sensitivity_reg & masks::fms;
 		}
 
-		constexpr void fms(const register_t new_fms_val) {
+		constexpr void fms(const register_t &new_fms_val) {
 			const register_t &val           = std::min(new_fms_val, masks::fms);
 			register_t &lfo_sensitivity_reg = reg(op_id::op3, 7);
 			lfo_sensitivity_reg &= masks::ams;

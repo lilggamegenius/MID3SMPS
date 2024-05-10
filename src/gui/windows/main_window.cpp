@@ -176,11 +176,8 @@ namespace MID3SMPS {
 					ImGui::Separator();
 					static bool override;
 					ImGui::Checkbox("Override Idle", &override);
-					static FpsIdling::override idleOverride;
-					if(override && !idleOverride) {
-						idleOverride = handler.idling().get_override();
-					} else if(!override && idleOverride) {
-						idleOverride = {};
+					if(override) {
+						handler.idling.override_this_frame = true;
 					}
 
 					ImGui::Checkbox("Show demo window", &MID3SMPS::show_demo_window);

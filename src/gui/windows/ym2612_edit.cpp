@@ -2,6 +2,7 @@
 
 #include <imguiwrap.dear.h>
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 #include <execution>
 #include <imgui_internal.h>
 #include <gui/backend/window_handler.hpp>
@@ -104,15 +105,15 @@ namespace MID3SMPS {
 		dear::Begin{window_title(), &stay_open_, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse} && [this] {
 			//const auto dock_node = ImGui::GetWindowDockNode();
 			render_menu_bar();
-			render_patch_selection();
+			render_instrument_selection();
 			dear::TabBar{"Editor tabs"} && [this] {
 				dear::TabItem{"Digital"} && [this] {
-					dear::Disabled(!has_selected_patch()) && [this] {
+					dear::Disabled(!has_selected_instrument()) && [this] {
 						render_editor_digital();
 					};
 				};
 				dear::TabItem{"Analog"} && [this] {
-					dear::Disabled(!has_selected_patch()) && [this] {
+					dear::Disabled(!has_selected_instrument()) && [this] {
 						render_editor_analog();
 					};
 				};
@@ -133,17 +134,17 @@ namespace MID3SMPS {
 		};
 	}
 
-	void ym2612_edit::render_patch_selection() {
+	void ym2612_edit::render_instrument_selection() {
 		dear::WithStyleVar style(ImGuiStyleVar_WindowPadding, {0, 0});
 		auto child_size = ImGui::GetContentRegionAvail();
 		child_size.y *= .45f;
 		dear::Child{"Patch Info", child_size, ImGuiChildFlags_ResizeY} && [this, &child_size] {
 			dear::Child("Patch selector", {child_size.x / 4, -1}, ImGuiChildFlags_Border) && [this] {
-				render_patch_selector();
+				render_instrument_selector();
 			};
 			ImGui::SameLine();
 			dear::Child("Mapping selector", {child_size.x / 4, -1}, ImGuiChildFlags_Border) && [this] {
-				render_patch_mappings();
+				render_instrument_mappings();
 			};
 			ImGui::SameLine();
 			dear::Child("Oscilloscope", {child_size.x / 2, -1}, ImGuiChildFlags_Border) && [this] {
@@ -152,8 +153,13 @@ namespace MID3SMPS {
 		};
 	}
 
-	void ym2612_edit::render_patch_selector() {
+	void ym2612_edit::render_instrument_selector() {
 		static constexpr ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+		static constexpr auto rename_dialog = "##ins_rename_dialog";
+
+		static decltype(selected_instrument_id()) id_for_edit = std::nullopt;
+		static bool popup_was_opened = false;
+		static bool trigger_popup = false;
 
 		for(const auto &bank : gyb_.bank_order) {
 			auto category_flags = base_flags;
@@ -163,26 +169,47 @@ namespace MID3SMPS {
 			dear::TreeNodeEx(gyb_.banks[bank].c_str(), category_flags) && [this, &bank] {
 				ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
 				for(const auto &id : gyb_.instruments_order[bank]) {
-					const auto &patch = gyb_.instruments[id];
-					auto patch_flags = base_flags;
-					if(selected_patch_id() == id) {
-						patch_flags |= ImGuiTreeNodeFlags_Selected;
+					const auto &instrument = gyb_.instruments[id];
+					auto instrument_flags = base_flags;
+					if(selected_instrument_id() == id) {
+						instrument_flags |= ImGuiTreeNodeFlags_Selected;
 					}
-					patch_flags |= ImGuiTreeNodeFlags_Leaf;
-					dear::TreeNodeEx(patch->name.c_str(), patch_flags) && [this, &bank, &id, &patch] {
+					instrument_flags |= ImGuiTreeNodeFlags_Leaf;
+					dear::TreeNodeEx(instrument->name.c_str(), instrument_flags) && [this, &bank, &id, &instrument] {
 						if(ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
 							selected_id = {bank, id};
 						}
-						dear::ItemTooltip() && [&patch] {
-							ImGui::TextUnformatted(patch->name.c_str());
+						if(ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && ImGui::IsItemHovered()) {
+							id_for_edit = id;
+							trigger_popup = true;
+						}
+						dear::ItemTooltip() && [&instrument] {
+							ImGui::TextUnformatted(instrument->name.c_str());
 						};
 					};
 				}
 				ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
 			};
 		}
+
+		if(trigger_popup) {
+			ImGui::OpenPopup(rename_dialog);
+			trigger_popup = false;
+		}
+
+		if(const auto popup = dear::Popup(rename_dialog)){
+			handler.idling.override_this_frame = true;
+			popup_was_opened = true;
+			ImGui::TextUnformatted("New instrument name");
+			auto &name = gyb_.instruments[*id_for_edit]->name;
+			ImGui::InputText("##New instrument name", &name);
+		} else if(popup_was_opened) {
+			id_for_edit = std::nullopt;
+			popup_was_opened = false;
+		}
+
 	}
-	void ym2612_edit::render_patch_mappings() {}
+	void ym2612_edit::render_instrument_mappings() {}
 
 	template<typename T, typename R = float>
 	constexpr R normalize(const T &val, const R &max) requires std::floating_point<R> && (std::integral<T> || std::floating_point<R>){
@@ -199,10 +226,10 @@ namespace MID3SMPS {
 
 	void ym2612_edit::render_oscilloscope() {
 		static std::vector<float> adsr_data = {};
-		if(!has_selected_patch()) {
+		if(!has_selected_instrument()) {
 			std::fill(std::execution::par_unseq, adsr_data.begin(), adsr_data.end(), 0);
 		} else {
-			const auto &operators = selected_patch().operators;
+			const auto &operators = selected_instrument().operators;
 			constexpr auto id     = operators::op_id::op4;
 			if(operators.attack_rate(id) == 0) {
 				goto skip_render;
@@ -414,16 +441,14 @@ namespace MID3SMPS {
 		static constexpr float free_space_range = 17.f;
 		static constexpr float scale_diff = 0.04f;
 		// ReSharper disable once CppEntityAssignedButNoRead
-		static std::optional<FpsIdling::override> override = std::nullopt;
 		if(last_space_remaining > free_space_range) {
 			window_scale += scale_diff;
 		} else if(last_space_remaining < 0) {
 			window_scale -= scale_diff;
 		} else {
-			override = std::nullopt;
 			return;
 		}
-		override = handler.idling().get_override(); // Set the override temporarily so the screen can scale
+		handler.idling.override_this_frame = true; // Set the override temporarily so the screen can scale
 		//ImGui::DebugLog("Cursor Y: %f WindowHeight: %f Available space: %f\n", cursor_y, window_height, last_space_remaining);
 	}
 
@@ -432,15 +457,15 @@ namespace MID3SMPS {
 		ImGui::TextUnformatted("Not done yet, go away");
 	}
 
-	fm::patch& ym2612_edit::selected_patch() {
+	fm_instrument& ym2612_edit::selected_instrument() {
 		if(selected_id) {
-			return *dynamic_cast<fm::patch*>(gyb_.instruments[selected_id->second].get());
+			return *dynamic_cast<fm_instrument*>(gyb_.instruments[selected_id->second].get());
 		}
 		return fm::empty_patch; // Patch editing is disabled if there is no patch selected
 	}
-	const fm::patch& ym2612_edit::selected_patch() const{
+	const fm_instrument& ym2612_edit::selected_instrument() const{
 		if(selected_id) {
-			return *dynamic_cast<fm::patch*>(gyb_.instruments.at(selected_id->second).get());
+			return *dynamic_cast<fm_instrument*>(gyb_.instruments.at(selected_id->second).get());
 		}
 		return fm::empty_patch;
 	}
@@ -489,7 +514,7 @@ namespace MID3SMPS {
 			ImGui::TextUnformatted(iter, cend);
 			dear::ItemTooltip{} && [this, &str] {
 				ImGui::Text("Imagine an envelope preview here for %s", str.data());
-				[[maybe_unused]] const auto &patch = selected_patch();
+				[[maybe_unused]] const auto &patch = selected_instrument();
 			};
 		}
 	}
@@ -498,7 +523,7 @@ namespace MID3SMPS {
 		using oper = operators;
 		dear::WithID(&op_id) && [this, &op_id] {
 			ImGui::SetNextItemWidth(-1);
-			auto &op = selected_patch().operators;
+			auto &op = selected_instrument().operators;
 			const auto val = op.detune(op_id);
 			dear::Combo{"##detune", oper::string(val).data()} && [&op, &op_id, &val] {
 				for (const auto &current : list<oper::detune_mode>()){
@@ -520,7 +545,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_multiple(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 16/4;
 		dear::WithID(&op_id) && [this, &op_id] {
-			auto &op = selected_patch().operators;
+			auto &op = selected_instrument().operators;
 			auto val = op.multiple(op_id);
 			ImGui::SetNextItemWidth(-1);
 			if(ImGui::InputScalar("##multiple", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
@@ -534,7 +559,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_total_level(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 128/4;
 		dear::WithID(&op_id) && [this, &op_id] {
-			auto &op = selected_patch().operators;
+			auto &op = selected_instrument().operators;
 			auto val = op.total_level(op_id);
 			ImGui::SetNextItemWidth(-1);
 			if(ImGui::InputScalar("##total_level", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
@@ -548,7 +573,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_rate_scaling(const operators::op_id &op_id) {
 		using oper = operators;
 		dear::WithID(&op_id) && [this, &op_id] {
-			auto &op = selected_patch().operators;
+			auto &op = selected_instrument().operators;
 			const auto val = op.rate_scaling(op_id);
 			ImGui::SetNextItemWidth(-1);
 			dear::Combo{"##rate_scaling",  oper::string(val).data()} && [&op, &op_id, &val] {
@@ -571,7 +596,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_attack_rate(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
 		dear::WithID(&op_id) && [this, &op_id] {
-			auto &op = selected_patch().operators;
+			auto &op = selected_instrument().operators;
 			auto val = op.attack_rate(op_id);
 			ImGui::SetNextItemWidth(-1);
 			if(ImGui::InputScalar("##attack_rate", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
@@ -588,7 +613,7 @@ namespace MID3SMPS {
 			"Enabled"
 		};
 		dear::WithID(&op_id) && [this, &op_id] {
-			auto &op = selected_patch().operators;
+			auto &op = selected_instrument().operators;
 			const auto val = op.amplitude_modulation(op_id);
 			ImGui::SetNextItemWidth(-1);
 			dear::Combo{"##amplitude_modulation", val ? values[1] : values[0]} && [&op, &op_id, &val] {
@@ -613,7 +638,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_decay_rate(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
 		dear::WithID(&op_id) && [this, &op_id] {
-			auto &op = selected_patch().operators;
+			auto &op = selected_instrument().operators;
 			auto val = op.decay_rate(op_id);
 			ImGui::SetNextItemWidth(-1);
 			if(ImGui::InputScalar("##decay_rate", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
@@ -627,7 +652,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_sustain_rate(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
 		dear::WithID(&op_id) && [this, &op_id] {
-			auto &op = selected_patch().operators;
+			auto &op = selected_instrument().operators;
 			auto val = op.sustain_rate(op_id);
 			ImGui::SetNextItemWidth(-1);
 			if(ImGui::InputScalar("##sustain_rate", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
@@ -641,7 +666,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_sustain_level(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
 		dear::WithID(&op_id) && [this, &op_id] {
-			auto &op = selected_patch().operators;
+			auto &op = selected_instrument().operators;
 			auto val = op.sustain_level(op_id);
 			ImGui::SetNextItemWidth(-1);
 			if(ImGui::InputScalar("##sustain_level", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
@@ -655,7 +680,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_release_rate(const operators::op_id &op_id) {
 		static constexpr std::uint8_t step = 0x1, step_fast = 32/4;
 		dear::WithID(&op_id) && [this, &op_id] {
-			auto &op = selected_patch().operators;
+			auto &op = selected_instrument().operators;
 			auto val = op.release_rate(op_id);
 			ImGui::SetNextItemWidth(-1);
 			if(ImGui::InputScalar("##release_rate", ImGuiDataType_U8, &val, &step, &step_fast, num_format().data())) {
@@ -669,7 +694,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_ssgeg(const operators::op_id &op_id) {
 		using oper = operators;
 		dear::WithID(&op_id) && [this, &op_id] {
-			auto &op = selected_patch().operators;
+			auto &op = selected_instrument().operators;
 			const auto val = op.ssgeg(op_id);
 			ImGui::SetNextItemWidth(-1);
 			dear::Combo{"##ssgeg", oper::string(val).data()} && [&op, &op_id, &val] {
@@ -704,7 +729,7 @@ namespace MID3SMPS {
 			"5.9"sv,
 			"11.8"sv
 		};
-		auto &op = selected_patch().operators;
+		auto &op = selected_instrument().operators;
 		const auto val = op.ams();
 		ImGui::SetNextItemWidth(-1);
 		dear::Combo{"##AMS value", strings[val].data()} && [&op] {
@@ -747,7 +772,7 @@ namespace MID3SMPS {
 			"\u00b140"sv,
 			"\u00b180"sv,
 		};
-		auto &op = selected_patch().operators;
+		auto &op = selected_instrument().operators;
 		const auto val = op.fms();
 		ImGui::SetNextItemWidth(-1);
 		dear::Combo{"##FMS value", strings[val].data()} && [&op] {
@@ -775,7 +800,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_feedback() {
 		ImGui::TextUnformatted("Feedback");
 		ImGui::TableNextColumn();
-		auto &op = selected_patch().operators;
+		auto &op = selected_instrument().operators;
 		const auto val = op.feedback();
 		using oper = operators;
 		ImGui::SetNextItemWidth(-1);
@@ -799,7 +824,7 @@ namespace MID3SMPS {
 	void ym2612_edit::render_algorithm() {
 		ImGui::TextUnformatted("Algorithm");
 		ImGui::TableNextColumn();
-		auto &op = selected_patch().operators;
+		auto &op = selected_instrument().operators;
 		const auto val = op.algorithm();
 		using oper = operators;
 		ImGui::SetNextItemWidth(-1);
@@ -833,7 +858,7 @@ namespace MID3SMPS {
 		const std::uint_fast8_t offset = current_row * 8;
 		const std::uint_fast8_t max = current_row == 3 ? 6 : 8;
 		const auto width = ImGui::GetContentRegionAvail().x / 4;
-		auto &op = const_cast<operators &>(selected_patch().operators); // InputScalar takes non-const pointer but can't actually write in this case
+		auto &op = const_cast<operators &>(selected_instrument().operators); // InputScalar takes non-const pointer but can't actually write in this case
 		for(std::uint_fast8_t i = 0; i < max; i++) {
 			if(i == 4) {
 				ImGui::TableNextColumn();

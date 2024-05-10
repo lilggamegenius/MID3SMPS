@@ -28,12 +28,12 @@ namespace MID3SMPS {
 		bool dirty_ = false;
 
 		void render_menu_bar();
-		void render_patch_selection();
+		void render_instrument_selection();
 		void render_editor_digital();
 		void render_editor_analog();
 
 		std::optional<std::pair<bank_key_t, ins_key_t>> selected_id = std::nullopt;
-		[[nodiscard]] constexpr bool has_selected_patch() const {
+		[[nodiscard]] constexpr bool has_selected_instrument() const {
 			return selected_id.has_value();
 		}
 		[[nodiscard]] constexpr std::optional<bank_key_t> selected_bank_id() const {
@@ -42,19 +42,19 @@ namespace MID3SMPS {
 			}
 			return selected_id->first;
 		}
-		[[nodiscard]] constexpr std::optional<ins_key_t> selected_patch_id() const {
+		[[nodiscard]] constexpr std::optional<ins_key_t> selected_instrument_id() const {
 			if(!selected_id) {
 				return std::nullopt;
 			}
 			return selected_id->second;
 		}
-		[[nodiscard]] M2S::gyb::ins_order_t& selected_bank();
-		[[nodiscard]] const M2S::gyb::ins_order_t& selected_bank() const;
-		[[nodiscard]] M2S::fm::patch& selected_patch();
-		[[nodiscard]] const M2S::fm::patch& selected_patch() const;
+		[[nodiscard]] instrument_bank::ins_order_t& selected_bank();
+		[[nodiscard]] const instrument_bank::ins_order_t& selected_bank() const;
+		[[nodiscard]] fm_instrument& selected_instrument();
+		[[nodiscard]] const fm_instrument& selected_instrument() const;
 
-		void render_patch_selector();
-		void render_patch_mappings();
+		void render_instrument_selector();
+		void render_instrument_mappings();
 		void render_oscilloscope();
 
 		void render_lfo();

@@ -13,6 +13,8 @@ namespace MID3SMPS {
 }
 
 void window_handler::main_loop_init() {
+	setvbuf(stdout, nullptr, _IONBF, 0); // Switch to line buffering
+
 	// Add .ini handle for UserData type
 	ImGuiSettingsHandler ini_handler;
 	ini_handler.TypeName   = MID3SMPS::program_persistence::TypeName;
@@ -22,11 +24,11 @@ void window_handler::main_loop_init() {
 	ini_handler.WriteAllFn = MID3SMPS::program_persistence::write_all;
 	ImGui::GetCurrentContext()->SettingsHandlers.push_back(ini_handler);
 
-	auto &style = ImGui::GetStyle();
+	auto &style            = ImGui::GetStyle();
 	style.ItemInnerSpacing = dear::Zero;
-	style.ItemSpacing = {0, 2};
-	style.FramePadding = {4, 1};
-	style.CellPadding = dear::Zero;
+	style.ItemSpacing      = {0, 2};
+	style.FramePadding     = {4, 1};
+	style.CellPadding      = dear::Zero;
 
 	reload_fonts();
 }
@@ -42,21 +44,22 @@ void window_handler::reload_fonts(const float pixel_size) {
 	fonts->ClearFonts();
 	static /*constexpr*/ auto cfg = generate_font_config();
 	#define FOLDER_PATH "data/fonts/" // macro because there's no way to concat strings at compile-time
-	main_font_ = fonts->AddFontFromFileTTF(FOLDER_PATH "SourceCodePro-Semibold.ttf", pixel_size, &cfg);
-	main_font_bold_ = fonts->AddFontFromFileTTF(FOLDER_PATH "SourceCodePro-Black.ttf", pixel_size, &cfg);
+	main_font      = fonts->AddFontFromFileTTF(FOLDER_PATH "SourceCodePro-Semibold.ttf", pixel_size, &cfg);
+	main_font_bold = fonts->AddFontFromFileTTF(FOLDER_PATH "SourceCodePro-Black.ttf", pixel_size, &cfg);
 	#undef FOLDER_PATH
 }
 
-ImGuiWrapperReturnType window_handler::main_loop_step(){
+ImGuiWrapperReturnType window_handler::main_loop_step() {
 	idle_by_sleeping();
-#ifdef DEBUG
-	if(MID3SMPS::show_demo_window){
+	#ifdef DEBUG
+	if(MID3SMPS::show_demo_window) {
 		ImGui::ShowDemoWindow(&MID3SMPS::show_demo_window);
 	}
-#endif
+	#endif
 	mainWindow->render();
 	mainWindow->render_children();
-	if(mainWindow->keep()){
+	fflush(stdout); // Flush output every frame
+	if(mainWindow->keep()) {
 		return std::nullopt;
 	}
 	mainWindow->on_close();
@@ -64,50 +67,57 @@ ImGuiWrapperReturnType window_handler::main_loop_step(){
 }
 
 // Init code
-window_handler::window_handler(){
-	config_.enableVsync_ = true;
-	config_.windowTitle_ = "MID3SMPS";
-	config_.enableDocking_ = true;
-	config_.enableViewport_ = true;
+window_handler::window_handler() {
+	config_.enableVsync_             = true;
+	config_.windowTitle_             = "MID3SMPS";
+	config_.enableDocking_           = true;
+	config_.enableViewport_          = true;
 	config_.enableViewportAutoMerge_ = false;
-	config_.hideMainWindow_ = true;
+	config_.hideMainWindow_          = true;
 
 	mainWindow = std::make_unique<MID3SMPS::main_window>();
 }
 
-void window_handler::idle_by_sleeping(){
-	constexpr uint_fast8_t framesToWait = 2;
+void window_handler::idle_by_sleeping() {
+	constexpr uint_fast8_t framesToWait  = 2;
 	static uint_fast8_t framesBeforeIdle = framesToWait;
-	idling_.isIdling = false;
-	if(idling_.is_idle_override()){
-		framesBeforeIdle = framesToWait;
+	auto &idle = MID3SMPS::handler.idling;
+	idle.is_idling                      = false;
+	if(idle.is_idle_override()) {
+		framesBeforeIdle           = framesToWait;
+		idle.override_this_frame = false;
 		return;
 	}
-	if(framesBeforeIdle > 0){
+	idle.override_this_frame = false;
+	if(framesBeforeIdle > 0) {
 		framesBeforeIdle--;
 	}
-	if ((idling_.fpsIdle > 0) && idling_.enableIdling){
+	if((idle.fps_idle > 0) && idle.enable_idling) {
 		using namespace std::chrono;
 		const auto beforeWait = system_clock::now();
 		//double waitTimeout = 1. / static_cast<double>(idling_.fpsIdle);
-		const double waitTimeout = 1. / static_cast<double>(idling_.fpsIdle);
+		const double waitTimeout = 1. / static_cast<double>(idle.fps_idle);
 
 		// Backend specific call that will wait for an event for a maximum duration of waitTimeout
 		// (for example glfwWaitEventsTimeout(timeout_seconds))
 		glfwWaitEventsTimeout(waitTimeout);
 
-		const auto afterWait = system_clock::now();
+		const auto afterWait    = system_clock::now();
 		const auto waitDuration = afterWait - beforeWait;
-		const milliseconds waitIdleExpected(1000 / idling_.fpsIdle);
-		idling_.isIdling = (waitDuration > waitIdleExpected * 0.9);
+		const milliseconds waitIdleExpected(1000 / idle.fps_idle);
+		idle.is_idling = (waitDuration > waitIdleExpected * 0.9);
 	}
 }
 
-const ImGuiWrapConfig &window_handler::config() const noexcept{
+fps_idling::override::override() noexcept {
+	++MID3SMPS::handler.idling.overrides;
+	MID3SMPS::handler.idling.override_this_frame = true;
+}
+
+fps_idling::override::~override() noexcept {
+	--MID3SMPS::handler.idling.overrides;
+}
+
+const ImGuiWrapConfig &window_handler::config() const noexcept {
 	return config_;
 }
-
-FpsIdling& window_handler::idling() noexcept{
-	return idling_;
-}
-

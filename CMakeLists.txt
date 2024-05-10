@@ -20,7 +20,7 @@ add_subdirectory(lib/imguiwrap)
 
 set_target_properties(imgui PROPERTIES UNITY_BUILD OFF)
 
-add_library(ImGuiFileDialog lib/ImGuiFileDialog/ImGuiFileDialog.cpp)
+add_library(ImGuiFileDialog lib/ImGuiFileDialog/ImGuiFileDialog.cpp lib/imguiwrap/vendor/imgui/src/misc/cpp/imgui_stdlib.cpp)
 target_include_directories(ImGuiFileDialog SYSTEM PRIVATE lib/imguiwrap/vendor/imgui/src)
 
 add_library(Nuked_OPN2 lib/Nuked-OPN2/ym3438.c)
